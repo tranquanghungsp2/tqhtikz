@@ -1,0 +1,6 @@
+{
+  "name": "Geo TikZ Studio",
+  "description": "Công cụ vẽ hình học trực quan (SVG) và tự động xuất mã LaTeX/TikZ cho việc soạn đề thi Toán.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
