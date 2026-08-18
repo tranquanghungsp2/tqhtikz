@@ -64,6 +64,8 @@ interface ToolbarProps {
   onCancelRadiusPick?: () => void;
   bgImage?: BackgroundImageState;
   onUpdateBgImage?: React.Dispatch<React.SetStateAction<BackgroundImageState>>;
+  globalLabelDistance: number;
+  onSetGlobalLabelDistance: (v: number) => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -101,6 +103,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onCancelRadiusPick,
   bgImage,
   onUpdateBgImage,
+  globalLabelDistance,
+  onSetGlobalLabelDistance,
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -999,6 +1003,22 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           />
           <span>Hiện trục Oxy</span>
         </label>
+
+        <div className="space-y-1 pt-2 border-t border-[#dbe4ee]">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-[#5b6b82]">Khoảng cách nhãn (tất cả điểm)</span>
+            <span className="font-semibold text-[#2f5d99]">{globalLabelDistance}pt</span>
+          </div>
+          <input
+            type="range"
+            min={4}
+            max={40}
+            step={2}
+            value={globalLabelDistance}
+            onChange={(e) => onSetGlobalLabelDistance(Number(e.target.value))}
+            className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
+          />
+        </div>
 
         {/* Undo, Redo, Clear All in Bento button row */}
         <div className="flex gap-1.5 pt-1">
