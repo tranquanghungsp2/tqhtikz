@@ -8,6 +8,7 @@ import {
   HistoryState,
   BackgroundImageState,
   PathAnnotation,
+  RightAngleMark,
 } from './types';
 import { Toolbar } from './components/Toolbar';
 import { Canvas } from './components/Canvas';
@@ -109,10 +110,12 @@ export default function App() {
   const [shapes, setShapes] = useState<GeoShape[]>([]);
   const [pointCounter, setPointCounter] = useState<number>(0);
   const [pathAnnotations, setPathAnnotations] = useState<PathAnnotation[]>([]);
+  const [rightAngleMarks, setRightAngleMarks] = useState<RightAngleMark[]>([]);
 
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [selectedPathAnnotationId, setSelectedPathAnnotationId] = useState<string | null>(null);
+  const [selectedRightAngleMarkId, setSelectedRightAngleMarkId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<ToolType>('select');
   const [showVisibilityManager, setShowVisibilityManager] = useState(false);
 
@@ -217,10 +220,11 @@ export default function App() {
         shapes: JSON.parse(JSON.stringify(shapes)),
         pointCounter,
         pathAnnotations: JSON.parse(JSON.stringify(pathAnnotations)),
+        rightAngleMarks: JSON.parse(JSON.stringify(rightAngleMarks)),
       },
     ]);
     setRedoStack([]);
-  }, [points, shapes, pointCounter, pathAnnotations]);
+  }, [points, shapes, pointCounter, pathAnnotations, rightAngleMarks]);
 
   // Undo Handler
   const handleUndo = useCallback(() => {
@@ -233,17 +237,20 @@ export default function App() {
         shapes: JSON.parse(JSON.stringify(shapes)),
         pointCounter,
         pathAnnotations: JSON.parse(JSON.stringify(pathAnnotations)),
+        rightAngleMarks: JSON.parse(JSON.stringify(rightAngleMarks)),
       },
     ]);
     setPoints(lastState.points);
     setShapes(lastState.shapes);
     setPointCounter(lastState.pointCounter);
     setPathAnnotations(lastState.pathAnnotations || []);
+    setRightAngleMarks(lastState.rightAngleMarks || []);
     setUndoStack((prev) => prev.slice(0, prev.length - 1));
     setSelectedPointId(null);
     setSelectedShapeId(null);
     setSelectedPathAnnotationId(null);
-  }, [undoStack, points, shapes, pointCounter, pathAnnotations]);
+    setSelectedRightAngleMarkId(null);
+  }, [undoStack, points, shapes, pointCounter, pathAnnotations, rightAngleMarks]);
 
   // Redo Handler
   const handleRedo = useCallback(() => {
@@ -256,17 +263,20 @@ export default function App() {
         shapes: JSON.parse(JSON.stringify(shapes)),
         pointCounter,
         pathAnnotations: JSON.parse(JSON.stringify(pathAnnotations)),
+        rightAngleMarks: JSON.parse(JSON.stringify(rightAngleMarks)),
       },
     ]);
     setPoints(nextState.points);
     setShapes(nextState.shapes);
     setPointCounter(nextState.pointCounter);
     setPathAnnotations(nextState.pathAnnotations || []);
+    setRightAngleMarks(nextState.rightAngleMarks || []);
     setRedoStack((prev) => prev.slice(0, prev.length - 1));
     setSelectedPointId(null);
     setSelectedShapeId(null);
     setSelectedPathAnnotationId(null);
-  }, [redoStack, points, shapes, pointCounter, pathAnnotations]);
+    setSelectedRightAngleMarkId(null);
+  }, [redoStack, points, shapes, pointCounter, pathAnnotations, rightAngleMarks]);
 
   // Point & Shape Operations
   const handleAddPoint = useCallback(
@@ -684,6 +694,11 @@ export default function App() {
           return true;
         })
       );
+      setRightAngleMarks((prev) =>
+        prev.filter(
+          (ram) => ram.point1Id !== pointId && ram.vertexId !== pointId && ram.point2Id !== pointId
+        )
+      );
       if (selectedPointId === pointId) setSelectedPointId(null);
     },
     [saveSnapshot, selectedPointId]
@@ -755,15 +770,48 @@ export default function App() {
     [saveSnapshot, selectedPathAnnotationId]
   );
 
+  const handleAddRightAngleMark = useCallback(
+    (mark: RightAngleMark) => {
+      saveSnapshot();
+      setRightAngleMarks((prev) => [...prev, mark]);
+      setSelectedRightAngleMarkId(mark.id);
+      setSelectedPointId(null);
+      setSelectedShapeId(null);
+      setSelectedPathAnnotationId(null);
+    },
+    [saveSnapshot]
+  );
+
+  const handleUpdateRightAngleMark = useCallback(
+    (id: string, updates: Partial<RightAngleMark>) => {
+      saveSnapshot();
+      setRightAngleMarks((prev) =>
+        prev.map((ram) => (ram.id === id ? ({ ...ram, ...updates } as RightAngleMark) : ram))
+      );
+    },
+    [saveSnapshot]
+  );
+
+  const handleDeleteRightAngleMark = useCallback(
+    (id: string) => {
+      saveSnapshot();
+      setRightAngleMarks((prev) => prev.filter((ram) => ram.id !== id));
+      if (selectedRightAngleMarkId === id) setSelectedRightAngleMarkId(null);
+    },
+    [saveSnapshot, selectedRightAngleMarkId]
+  );
+
   const handleClearAll = useCallback(() => {
     saveSnapshot();
     setPoints([]);
     setShapes([]);
     setPointCounter(0);
     setPathAnnotations([]);
+    setRightAngleMarks([]);
     setSelectedPointId(null);
     setSelectedShapeId(null);
     setSelectedPathAnnotationId(null);
+    setSelectedRightAngleMarkId(null);
     setShowClearModal(false);
   }, [saveSnapshot]);
 
@@ -949,6 +997,7 @@ export default function App() {
   const selectedPoint = points.find((p) => p.id === selectedPointId) || null;
   const selectedShape = shapes.find((s) => s.id === selectedShapeId) || null;
   const selectedPathAnnotation = pathAnnotations.find((ann) => ann.id === selectedPathAnnotationId) || null;
+  const selectedRightAngleMark = rightAngleMarks.find((m) => m.id === selectedRightAngleMarkId) || null;
   const nextPointLabel = generatePointLabel(pointCounter);
 
   return (
@@ -1098,6 +1147,7 @@ export default function App() {
                   setSelectedPointId(null);
                   setSelectedShapeId(null);
                   setSelectedPathAnnotationId(null);
+                  setSelectedRightAngleMarkId(null);
                 }
               }}
               onAddPoint={handleAddPoint}
@@ -1117,6 +1167,11 @@ export default function App() {
               selectedPathAnnotationId={selectedPathAnnotationId}
               onSelectPathAnnotation={setSelectedPathAnnotationId}
               onAddPathAnnotation={handleAddPathAnnotation}
+              rightAngleMarks={rightAngleMarks}
+              selectedRightAngleMarkId={selectedRightAngleMarkId}
+              onSelectRightAngleMark={setSelectedRightAngleMarkId}
+              onAddRightAngleMark={handleAddRightAngleMark}
+              onUpdateRightAngleMark={handleUpdateRightAngleMark}
             />
 
             {/* Column 3: Right Sidebar (~330px) */}
@@ -1124,22 +1179,28 @@ export default function App() {
               selectedPoint={selectedPoint}
               selectedShape={selectedShape}
               selectedPathAnnotation={selectedPathAnnotation}
+              selectedRightAngleMark={selectedRightAngleMark}
               pathAnnotations={pathAnnotations}
+              rightAngleMarks={rightAngleMarks}
               points={points}
               shapes={shapes}
               onUpdatePoint={handleUpdatePoint}
               onUpdateShape={handleUpdateShape}
               onUpdatePathAnnotation={handleUpdatePathAnnotation}
+              onUpdateRightAngleMark={handleUpdateRightAngleMark}
               onDeletePoint={handleDeletePoint}
               onDeleteShape={handleDeleteShape}
               onDeletePathAnnotation={handleDeletePathAnnotation}
+              onDeleteRightAngleMark={handleDeleteRightAngleMark}
               onUnmergeShape={handleUnmergeShape}
               onDeselect={() => {
                 setSelectedPointId(null);
                 setSelectedShapeId(null);
                 setSelectedPathAnnotationId(null);
+                setSelectedRightAngleMarkId(null);
               }}
               onSelectPathAnnotation={setSelectedPathAnnotationId}
+              onSelectRightAngleMark={setSelectedRightAngleMarkId}
               tikzOptions={tikzOptions}
               onUpdateTikzOptions={(opts) => setTikzOptions((prev) => ({ ...prev, ...opts }))}
               svgRef={svgRef}
