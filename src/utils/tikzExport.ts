@@ -768,6 +768,37 @@ export function generateTikZCodeWithLineMap(
     }
   }
 
+  // Thêm nhãn ghi chú (Path Annotations) gom vào một lệnh \path
+  const pathAnnotations = options.pathAnnotations;
+  if (pathAnnotations && pathAnnotations.length > 0) {
+    lines.push('');
+    lines.push('  % --- Nhãn ghi chú (Path Annotations) ---');
+    lines.push('  \\path');
+    
+    pathAnnotations.forEach((item) => {
+      if (item.type === 'segment_label') {
+        const p1 = pointsMap.get(item.point1Id);
+        const p2 = pointsMap.get(item.point2Id);
+        if (p1 && p2) {
+          const name1 = getTikZCoordName(p1);
+          const name2 = getTikZCoordName(p2);
+          const posVal = item.pos !== undefined ? item.pos : 0.5;
+          const opt = item.positionOption ? `,${item.positionOption}` : '';
+          lines.push(`    (${name1})--(${name2}) node[pos=${posVal}${opt}] {${item.text}}`);
+        }
+      } else if (item.type === 'point_offset_label') {
+        const pt = pointsMap.get(item.pointId);
+        if (pt) {
+          const name = getTikZCoordName(pt);
+          const distPt = item.distancePt ?? 20;
+          lines.push(`    (${name}) ++ (${formatNumber(item.angle)}:${distPt}pt) node{${item.text}}`);
+        }
+      }
+    });
+
+    lines.push('  ;');
+  }
+
   lines.push('\\end{tikzpicture}');
   if (options.standalone) {
     lines.push('\\end{document}');
