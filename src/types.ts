@@ -25,7 +25,8 @@ export type ToolType =
   | 'eyedropper'
   | 'toggle_visibility'
   | 'path_segment_label'
-  | 'path_offset_label';
+  | 'path_offset_label'
+  | 'right_angle_mark';
 
 export type LabelPosition =
   | 'auto'
@@ -290,6 +291,7 @@ export interface HistoryState {
   shapes: GeoShape[];
   pointCounter: number;
   pathAnnotations?: PathAnnotation[];
+  rightAngleMarks?: RightAngleMark[];
 }
 
 export interface AppSettings {
@@ -308,6 +310,15 @@ export interface TikZExportOptions {
   scale: number;
   useColorDefinitions: boolean;
   pathAnnotations?: PathAnnotation[];
+  rightAngleMarks?: RightAngleMark[];
+}
+
+export interface RightAngleMark {
+  id: string;
+  point1Id: string; // \x — điểm thứ nhất
+  vertexId: string; // \y — đỉnh góc vuông
+  point2Id: string; // \z — điểm thứ hai
+  angleRadiusMm: number; // bán kính ký hiệu, đơn vị mm (mặc định 2.5)
 }
 
 export type PathAnnotation =
