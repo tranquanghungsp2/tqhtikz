@@ -1,4 +1,4 @@
-import { GeoPoint, GeoShape, TikZExportOptions } from '../types';
+import { GeoPoint, GeoShape, TikZExportOptions, RightAngleMark } from '../types';
 import {
   dist,
   circumcircle3P,
@@ -765,6 +765,44 @@ export function generateTikZCodeWithLineMap(
           }
         }
       }
+    }
+  }
+
+  // Thêm ký hiệu góc vuông (Right Angle Marks) — gom theo bán kính angleRadiusMm
+  const rightAngleMarks = options.rightAngleMarks;
+  if (rightAngleMarks && rightAngleMarks.length > 0) {
+    const groupedByRadius = new Map<number, RightAngleMark[]>();
+    rightAngleMarks.forEach((mark) => {
+      const r = Math.round((mark.angleRadiusMm ?? 2.5) * 10) / 10;
+      const arr = groupedByRadius.get(r) || [];
+      arr.push(mark);
+      groupedByRadius.set(r, arr);
+    });
+
+    if (groupedByRadius.size > 0) {
+      lines.push('');
+      lines.push('  % --- Ký hiệu góc vuông ---');
+      Array.from(groupedByRadius.entries())
+        .sort((a, b) => a[0] - b[0])
+        .forEach(([radiusMm, marksInGroup]) => {
+          const triples = marksInGroup
+            .map((mark) => {
+              const p1 = pointsMap.get(mark.point1Id);
+              const v = pointsMap.get(mark.vertexId);
+              const p2 = pointsMap.get(mark.point2Id);
+              if (!p1 || !v || !p2) return null;
+              return `${getTikZCoordName(p1)}/${getTikZCoordName(v)}/${getTikZCoordName(p2)}`;
+            })
+            .filter(Boolean);
+
+          if (triples.length > 0) {
+            lines.push(`  \\foreach \\x/\\y/\\z in{`);
+            lines.push(`    ${triples.join(',')}`);
+            lines.push(`  }{`);
+            lines.push(`    \\draw pic[draw,angle radius=${formatNumber(radiusMm)}mm]{right angle=\\x--\\y--\\z};`);
+            lines.push(`  }`);
+          }
+        });
     }
   }
 
