@@ -776,12 +776,26 @@ export default function App() {
         points={points}
         shapes={shapes}
         pointCounter={pointCounter}
-        onLoadDrawing={(loadedPoints, loadedShapes, loadedPointCounter) => {
+        bgImage={bgImage}
+        onLoadDrawing={(loadedPoints, loadedShapes, loadedPointCounter, loadedBgImage) => {
           setPoints(loadedPoints);
           setShapes(loadedShapes);
           setPointCounter(loadedPointCounter);
           setSelectedPointId(null);
           setSelectedShapeId(null);
+          if (loadedBgImage) {
+            setBgImage(loadedBgImage);
+          } else {
+            setBgImage({
+              dataUrl: null,
+              fileName: '',
+              opacity: 0.4,
+              scale: 1,
+              panX: 0,
+              panY: 0,
+              naturalAspect: 1,
+            });
+          }
         }}
       />
 
