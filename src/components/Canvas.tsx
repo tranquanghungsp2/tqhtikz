@@ -345,7 +345,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                   justifyContent: 'center',
                   fontSize: '13px',
                   whiteSpace: 'nowrap',
-                  color: isSelected ? '#1d4ed8' : '#334155',
+                  color: isSelected ? '#1d4ed8' : '#16233a',
                 }}
                 dangerouslySetInnerHTML={{ __html: renderLatexToHtml(item.text) }}
               />
@@ -358,7 +358,9 @@ export const Canvas: React.FC<CanvasProps> = ({
 
         const s = worldToScreen(pt.x, pt.y, viewport);
         const rad = (item.angle * Math.PI) / 180;
-        const distPx = item.distancePt ?? 20;
+        const distPt = item.distancePt ?? 20;
+        const ptToPx = viewport.scale / 28.3465; // quy đổi pt -> px theo đúng tỉ lệ cm hiện tại
+        const distPx = distPt * ptToPx;
 
         const tx = s.x + distPx * Math.cos(rad);
         const ty = s.y - distPx * Math.sin(rad);
@@ -409,7 +411,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                   justifyContent: 'center',
                   fontSize: '13px',
                   whiteSpace: 'nowrap',
-                  color: isSelected ? '#1d4ed8' : '#334155',
+                  color: isSelected ? '#1d4ed8' : '#16233a',
                 }}
                 dangerouslySetInnerHTML={{ __html: renderLatexToHtml(item.text) }}
               />
@@ -2953,8 +2955,13 @@ export const Canvas: React.FC<CanvasProps> = ({
       // Label offset positioning using custom angle and distance
       const { angle: labelAngle, distance: labelDist } = getPointLabelAngleDistance(pt);
       const labelAngleRad = (labelAngle * Math.PI) / 180;
-      const labelX = s.x + Math.cos(labelAngleRad) * labelDist;
-      const labelY = s.y - Math.sin(labelAngleRad) * labelDist; // trừ vì màn hình Y hướng xuống
+      // Quy đổi pt (điểm in ấn thật, đúng đơn vị TikZ) sang px màn hình THEO ĐÚNG tỉ lệ cm
+      // hiện tại (viewport.scale) — để khi zoom canvas, khoảng cách nhãn co giãn đúng tỉ lệ
+      // như bản PDF thật, không bị lệch. 28.3465pt = 1cm.
+      const ptToPx = viewport.scale / 28.3465;
+      const labelDistPx = labelDist * ptToPx;
+      const labelX = s.x + Math.cos(labelAngleRad) * labelDistPx;
+      const labelY = s.y - Math.sin(labelAngleRad) * labelDistPx; // trừ vì màn hình Y hướng xuống
       const textAnchor: 'start' | 'middle' | 'end' =
         Math.cos(labelAngleRad) > 0.3 ? 'start' : Math.cos(labelAngleRad) < -0.3 ? 'end' : 'middle';
 
