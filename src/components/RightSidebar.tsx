@@ -21,6 +21,7 @@ import {
   DashPattern,
   TikZExportOptions,
   PathAnnotation,
+  RightAngleMark,
 } from '../types';
 import { generateTikZCodeWithLineMap, getMathLabel } from '../utils/tikzExport';
 import { formatCm } from '../utils/geometry';
@@ -29,18 +30,23 @@ interface RightSidebarProps {
   selectedPoint: GeoPoint | null;
   selectedShape: GeoShape | null;
   selectedPathAnnotation: PathAnnotation | null;
+  selectedRightAngleMark?: RightAngleMark | null;
   pathAnnotations: PathAnnotation[];
+  rightAngleMarks?: RightAngleMark[];
   points: GeoPoint[];
   shapes: GeoShape[];
   onUpdatePoint: (pointId: string, updates: Partial<GeoPoint>) => void;
   onUpdateShape: (shapeId: string, updates: Partial<GeoShape>) => void;
   onUpdatePathAnnotation: (id: string, updates: Partial<PathAnnotation>) => void;
+  onUpdateRightAngleMark?: (id: string, updates: Partial<RightAngleMark>) => void;
   onDeletePoint: (pointId: string) => void;
   onDeleteShape: (shapeId: string) => void;
   onDeletePathAnnotation: (id: string) => void;
+  onDeleteRightAngleMark?: (id: string) => void;
   onUnmergeShape?: (shapeId: string) => void;
   onDeselect: () => void;
   onSelectPathAnnotation?: (id: string | null) => void;
+  onSelectRightAngleMark?: (id: string | null) => void;
   tikzOptions: TikZExportOptions;
   onUpdateTikzOptions: (opts: Partial<TikZExportOptions>) => void;
   svgRef: React.RefObject<SVGSVGElement | null>;
@@ -88,18 +94,23 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   selectedPoint,
   selectedShape,
   selectedPathAnnotation,
+  selectedRightAngleMark,
   pathAnnotations,
+  rightAngleMarks = [],
   points,
   shapes,
   onUpdatePoint,
   onUpdateShape,
   onUpdatePathAnnotation,
+  onUpdateRightAngleMark,
   onDeletePoint,
   onDeleteShape,
   onDeletePathAnnotation,
+  onDeleteRightAngleMark,
   onUnmergeShape,
   onDeselect,
   onSelectPathAnnotation,
+  onSelectRightAngleMark,
   tikzOptions,
   onUpdateTikzOptions,
   svgRef,
@@ -110,7 +121,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   const [lastClickedLine, setLastClickedLine] = useState<number | null>(null);
   const [copiedRange, setCopiedRange] = useState<{ start: number; end: number } | null>(null);
 
-  const { code: tikzCode, shapeToLines } = generateTikZCodeWithLineMap(points, shapes, { ...tikzOptions, pathAnnotations });
+  const { code: tikzCode, shapeToLines } = generateTikZCodeWithLineMap(points, shapes, { ...tikzOptions, pathAnnotations, rightAngleMarks });
   const selectedShapeId = selectedShape?.id;
   const highlightedLines = React.useMemo(() => {
     return new Set<number>(selectedShapeId ? shapeToLines.get(selectedShapeId) || [] : []);
@@ -882,6 +893,89 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   </button>
                 </div>
               </div>
+            ) : selectedRightAngleMark ? (
+              /* When a RightAngleMark is selected */
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#dbe4ee]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded bg-[#e4ecf7] text-[#2f5d99] flex items-center justify-center font-bold text-xs">
+                      ⌐
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-[#16233a] uppercase tracking-wide">
+                        Ký hiệu góc vuông
+                      </div>
+                      <div className="text-[10px] text-[#5b6b82]">3 điểm: Đầu – Đỉnh – Cuối</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={onDeselect}
+                    title="Bỏ chọn"
+                    className="p-1 rounded hover:bg-[#f1f5f9] text-[#5b6b82]"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Information about 3 points */}
+                <div className="p-2.5 bg-[#f8fafc] border border-[#dbe4ee] rounded-md space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-[#5b6b82]">Điểm 1 (\x):</span>
+                    <span className="font-semibold text-[#16233a]">
+                      {points.find((p) => p.id === selectedRightAngleMark.point1Id)?.label || selectedRightAngleMark.point1Id}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#5b6b82]">Đỉnh góc vuông (\y):</span>
+                    <span className="font-bold text-[#2f5d99]">
+                      {points.find((p) => p.id === selectedRightAngleMark.vertexId)?.label || selectedRightAngleMark.vertexId}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#5b6b82]">Điểm 2 (\z):</span>
+                    <span className="font-semibold text-[#16233a]">
+                      {points.find((p) => p.id === selectedRightAngleMark.point2Id)?.label || selectedRightAngleMark.point2Id}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Angle radius slider in mm */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-[#16233a]">
+                    <span className="text-[10px] font-bold text-[#5b6b82] uppercase tracking-wider">Bán kính ký hiệu:</span>
+                    <span className="font-semibold text-[#2f5d99]">{selectedRightAngleMark.angleRadiusMm ?? 2.5} mm</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    step={0.5}
+                    value={selectedRightAngleMark.angleRadiusMm ?? 2.5}
+                    onChange={(e) =>
+                      onUpdateRightAngleMark?.(selectedRightAngleMark.id, {
+                        angleRadiusMm: parseFloat(e.target.value) || 2.5,
+                      })
+                    }
+                    className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
+                  />
+                  <div className="flex justify-between text-[10px] text-[#5b6b82]">
+                    <span>1.0 mm</span>
+                    <span>2.5 mm (chuẩn)</span>
+                    <span>10.0 mm</span>
+                  </div>
+                </div>
+
+                {/* Delete Button */}
+                <div className="pt-2">
+                  <button
+                    onClick={() => onDeleteRightAngleMark?.(selectedRightAngleMark.id)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-[#fee2e2] hover:bg-[#fecaca] text-[#b91c1c] text-xs font-semibold rounded-md transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xoá ký hiệu góc vuông</span>
+                  </button>
+                </div>
+              </div>
             ) : (
               /* Empty state when nothing selected */
               <div className="py-10 px-2 text-center space-y-4">
@@ -894,10 +988,43 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                       Chưa chọn đối tượng nào
                     </div>
                     <div className="text-[11px] text-[#5b6b82] leading-relaxed">
-                      Nhấp vào một điểm, hình vẽ hoặc nhãn \path trên canvas để tùy chỉnh.
+                      Nhấp vào một điểm, hình vẽ, nhãn hoặc góc vuông trên canvas để tùy chỉnh.
                     </div>
                   </div>
                 </div>
+
+                {rightAngleMarks.length > 0 && (
+                  <div className="pt-4 border-t border-[#dbe4ee] text-left space-y-2">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#5b6b82]">
+                      Ký hiệu góc vuông ({rightAngleMarks.length})
+                    </div>
+                    <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                      {rightAngleMarks.map((ram) => {
+                        const p1 = points.find((p) => p.id === ram.point1Id);
+                        const v = points.find((p) => p.id === ram.vertexId);
+                        const p2 = points.find((p) => p.id === ram.point2Id);
+                        const labelStr = `${p1?.label || '?'}-${v?.label || '?'}-${p2?.label || '?'}`;
+                        return (
+                          <button
+                            key={ram.id}
+                            onClick={() => {
+                              onSelectRightAngleMark?.(ram.id);
+                            }}
+                            className="w-full text-left p-2 rounded bg-[#f8fafc] border border-[#dbe4ee] hover:bg-[#e4ecf7] hover:border-[#2f5d99]/30 transition-all text-xs flex justify-between items-center"
+                          >
+                            <div className="truncate pr-2 flex items-center gap-1.5">
+                              <span className="text-[#2f5d99] font-bold">⌐</span>
+                              <span className="font-mono text-[#16233a] truncate font-semibold">Góc vuông ({labelStr})</span>
+                            </div>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#5b6b82] shrink-0 font-medium">
+                              {ram.angleRadiusMm}mm
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {pathAnnotations.length > 0 && (
                   <div className="pt-4 border-t border-[#dbe4ee] text-left space-y-2">
