@@ -3035,7 +3035,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 const boxH = 24;
                 const boxX =
                   textAnchor === 'start' ? labelX : textAnchor === 'end' ? labelX - boxW : labelX - boxW / 2;
-                const boxY = labelY - boxH / 2 - 5;
+                const boxY = labelY - boxH / 2;
                 return (
                   <foreignObject
                     x={boxX}
