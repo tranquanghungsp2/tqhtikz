@@ -9,6 +9,7 @@ import {
   Trash2,
   Clock,
   ShieldCheck,
+  Eye,
 } from 'lucide-react';
 import { GeoPoint, GeoShape, BackgroundImageState } from '../types';
 import { useAuth } from '../hooks/useAuth';
@@ -36,6 +37,7 @@ interface HeaderProps {
   ) => void;
   formulaMode: boolean;
   onToggleFormulaMode: () => void;
+  onOpenVisibilityManager: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -46,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLoadDrawing,
   formulaMode,
   onToggleFormulaMode,
+  onOpenVisibilityManager,
 }) => {
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const { user, loading, signInWithGoogle, signOut } = useAuth();
@@ -263,6 +266,15 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         )}
+
+        {/* Visibility Manager button */}
+        <button
+          onClick={onOpenVisibilityManager}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-[#5b6b82] hover:text-[#16233a] hover:bg-[#f8fafc] border border-transparent hover:border-[#dbe4ee] rounded-md transition-colors"
+        >
+          <Eye className="w-3.5 h-3.5" />
+          <span>Ẩn / Hiện</span>
+        </button>
 
         {/* Shortcuts button */}
         <button
