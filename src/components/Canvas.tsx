@@ -85,6 +85,7 @@ interface CanvasProps {
   onFinishPolyline: () => void;
   bgImage?: BackgroundImageState;
   onUpdateBgImage?: React.Dispatch<React.SetStateAction<BackgroundImageState>>;
+  globalLabelDistance: number;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -121,6 +122,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   onFinishPolyline,
   bgImage,
   onUpdateBgImage,
+  globalLabelDistance,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -198,11 +200,12 @@ export const Canvas: React.FC<CanvasProps> = ({
   };
 
   const getPointLabelAngleDistance = (pt: GeoPoint): { angle: number; distance: number } => {
-    if (pt.labelAngleDeg !== undefined && pt.labelDistance !== undefined) {
-      return { angle: pt.labelAngleDeg, distance: pt.labelDistance };
-    }
-    const angle = LEGACY_LABEL_POS_TO_ANGLE[pt.labelPos || 'auto'] ?? 45;
-    return { angle, distance: 8 };
+    const angle =
+      pt.labelAngleDeg !== undefined
+        ? pt.labelAngleDeg
+        : LEGACY_LABEL_POS_TO_ANGLE[pt.labelPos || 'auto'] ?? 45;
+    const distance = pt.labelDistance !== undefined ? pt.labelDistance : globalLabelDistance;
+    return { angle, distance };
   };
 
   // Measure container size
@@ -1244,7 +1247,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       return;
     }
 
-    // Handle label dragging (kéo nhãn quanh điểm)
+    // Handle label dragging (kéo nhãn quanh điểm) — CHỈ đổi góc, khoảng cách dùng chung toàn bộ điểm
     if (draggingLabelPointId) {
       const pt = points.find((p) => p.id === draggingLabelPointId);
       if (pt) {
@@ -1252,10 +1255,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         const dx = sx - ptScreen.x;
         const dy = sy - ptScreen.y;
         const rawAngle = (Math.atan2(-dy, dx) * 180) / Math.PI;
-        const angle = Math.round(rawAngle); // làm tròn độ, đủ mượt khi kéo, gọn khi xuất mã
-        const rawDistance = Math.max(4, Math.min(60, Math.hypot(dx, dy)));
-        const distance = Math.round(rawDistance / 2) * 2; // làm tròn về bội số 2pt gần nhất
-        onUpdatePoint(draggingLabelPointId, { labelAngleDeg: angle, labelDistance: distance });
+        const angle = Math.round(rawAngle);
+        onUpdatePoint(draggingLabelPointId, { labelAngleDeg: angle });
       }
       return;
     }
