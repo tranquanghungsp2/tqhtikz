@@ -20,6 +20,7 @@ import {
   PointStyle,
   DashPattern,
   TikZExportOptions,
+  PathAnnotation,
 } from '../types';
 import { generateTikZCodeWithLineMap, getMathLabel } from '../utils/tikzExport';
 import { formatCm } from '../utils/geometry';
@@ -27,14 +28,19 @@ import { formatCm } from '../utils/geometry';
 interface RightSidebarProps {
   selectedPoint: GeoPoint | null;
   selectedShape: GeoShape | null;
+  selectedPathAnnotation: PathAnnotation | null;
+  pathAnnotations: PathAnnotation[];
   points: GeoPoint[];
   shapes: GeoShape[];
   onUpdatePoint: (pointId: string, updates: Partial<GeoPoint>) => void;
   onUpdateShape: (shapeId: string, updates: Partial<GeoShape>) => void;
+  onUpdatePathAnnotation: (id: string, updates: Partial<PathAnnotation>) => void;
   onDeletePoint: (pointId: string) => void;
   onDeleteShape: (shapeId: string) => void;
+  onDeletePathAnnotation: (id: string) => void;
   onUnmergeShape?: (shapeId: string) => void;
   onDeselect: () => void;
+  onSelectPathAnnotation?: (id: string | null) => void;
   tikzOptions: TikZExportOptions;
   onUpdateTikzOptions: (opts: Partial<TikZExportOptions>) => void;
   svgRef: React.RefObject<SVGSVGElement | null>;
@@ -81,14 +87,19 @@ const LABEL_POSITIONS: Array<{ id: LabelPosition; label: string }> = [
 export const RightSidebar: React.FC<RightSidebarProps> = ({
   selectedPoint,
   selectedShape,
+  selectedPathAnnotation,
+  pathAnnotations,
   points,
   shapes,
   onUpdatePoint,
   onUpdateShape,
+  onUpdatePathAnnotation,
   onDeletePoint,
   onDeleteShape,
+  onDeletePathAnnotation,
   onUnmergeShape,
   onDeselect,
+  onSelectPathAnnotation,
   tikzOptions,
   onUpdateTikzOptions,
   svgRef,
@@ -99,7 +110,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   const [lastClickedLine, setLastClickedLine] = useState<number | null>(null);
   const [copiedRange, setCopiedRange] = useState<{ start: number; end: number } | null>(null);
 
-  const { code: tikzCode, shapeToLines } = generateTikZCodeWithLineMap(points, shapes, tikzOptions);
+  const { code: tikzCode, shapeToLines } = generateTikZCodeWithLineMap(points, shapes, { ...tikzOptions, pathAnnotations });
   const selectedShapeId = selectedShape?.id;
   const highlightedLines = React.useMemo(() => {
     return new Set<number>(selectedShapeId ? shapeToLines.get(selectedShapeId) || [] : []);
@@ -195,7 +206,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
         >
           <Sliders className="w-3.5 h-3.5" />
           <span>THUỘC TÍNH</span>
-          {(selectedPoint || selectedShape) && (
+          {(selectedPoint || selectedShape || selectedPathAnnotation) && (
             <span className="w-1.5 h-1.5 rounded-full bg-[#2f5d99]" />
           )}
         </button>
@@ -724,20 +735,198 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   </button>
                 </div>
               </div>
+            ) : selectedPathAnnotation ? (
+              /* When a PathAnnotation is selected */
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#dbe4ee]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded bg-[#e4ecf7] text-[#2f5d99] flex items-center justify-center font-bold text-xs">
+                      Ab
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-[#16233a] uppercase tracking-wide">
+                        {selectedPathAnnotation.type === 'segment_label' ? 'Nhãn trên đoạn' : 'Nhãn điểm/góc'}
+                      </div>
+                      <div className="text-[10px] text-[#5b6b82]">Nhãn tùy biến \path</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={onDeselect}
+                    title="Bỏ chọn"
+                    className="p-1 rounded hover:bg-[#f1f5f9] text-[#5b6b82]"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Edit Text Field */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#5b6b82] uppercase tracking-wider">
+                    Nội dung nhãn
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedPathAnnotation.text}
+                    onChange={(e) =>
+                      onUpdatePathAnnotation(selectedPathAnnotation.id, { text: e.target.value })
+                    }
+                    className="w-full text-xs bg-white border border-[#dbe4ee] hover:border-[#b4c6dc] focus:border-[#2f5d99] focus:ring-1 focus:ring-[#2f5d99]/20 rounded-md px-2.5 py-1.5 outline-none transition-all font-mono"
+                    placeholder="Ví dụ: $30^\circ$, 5m..."
+                  />
+                </div>
+
+                {selectedPathAnnotation.type === 'segment_label' ? (
+                  <>
+                    {/* Position slider (pos) */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-[#16233a]">
+                        <span className="text-[10px] font-bold text-[#5b6b82] uppercase tracking-wider">Vị trí (pos):</span>
+                        <span className="font-semibold text-[#2f5d99]">{selectedPathAnnotation.pos ?? 0.5}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={selectedPathAnnotation.pos ?? 0.5}
+                        onChange={(e) =>
+                          onUpdatePathAnnotation(selectedPathAnnotation.id, {
+                            pos: parseFloat(e.target.value),
+                          })
+                        }
+                        className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
+                      />
+                    </div>
+
+                    {/* Position Option Selector */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-[#5b6b82] uppercase tracking-wider">
+                        Hướng nhãn
+                      </label>
+                      <select
+                        value={selectedPathAnnotation.positionOption || ''}
+                        onChange={(e) =>
+                          onUpdatePathAnnotation(selectedPathAnnotation.id, {
+                            positionOption: e.target.value || undefined,
+                          })
+                        }
+                        className="w-full text-xs bg-white border border-[#dbe4ee] rounded-md px-2 py-1.5 outline-none transition-all"
+                      >
+                        <option value="">Mặc định (Không chỉ định)</option>
+                        <option value="above">above (Phía trên)</option>
+                        <option value="below">below (Phía dưới)</option>
+                        <option value="left">left (Phía trái)</option>
+                        <option value="right">right (Phía phải)</option>
+                        <option value="above left">above left (Trên - Trái)</option>
+                        <option value="above right">above right (Trên - Phải)</option>
+                        <option value="below left">below left (Dưới - Trái)</option>
+                        <option value="below right">below right (Dưới - Phải)</option>
+                        <option value="midway">midway (Chính giữa)</option>
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Angle (góc độ) control */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-[#16233a]">
+                        <span className="text-[10px] font-bold text-[#5b6b82] uppercase tracking-wider">Góc độ (angle):</span>
+                        <span className="font-semibold text-[#2f5d99]">{selectedPathAnnotation.angle}°</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={-360}
+                        max={360}
+                        step={5}
+                        value={selectedPathAnnotation.angle}
+                        onChange={(e) =>
+                          onUpdatePathAnnotation(selectedPathAnnotation.id, {
+                            angle: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
+                      />
+                    </div>
+
+                    {/* Distance in pt */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-[#16233a]">
+                        <span className="text-[10px] font-bold text-[#5b6b82] uppercase tracking-wider">Khoảng cách (pt):</span>
+                        <span className="font-semibold text-[#2f5d99]">{selectedPathAnnotation.distancePt} pt</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={5}
+                        max={60}
+                        step={1}
+                        value={selectedPathAnnotation.distancePt}
+                        onChange={(e) =>
+                          onUpdatePathAnnotation(selectedPathAnnotation.id, {
+                            distancePt: parseInt(e.target.value) || 15,
+                          })
+                        }
+                        className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Delete Button */}
+                <div className="pt-2">
+                  <button
+                    onClick={() => onDeletePathAnnotation(selectedPathAnnotation.id)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-[#fee2e2] hover:bg-[#fecaca] text-[#b91c1c] text-xs font-semibold rounded-md transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xoá nhãn này</span>
+                  </button>
+                </div>
+              </div>
             ) : (
               /* Empty state when nothing selected */
-              <div className="py-10 px-2 text-center space-y-3">
-                <div className="w-10 h-10 mx-auto rounded-full bg-[#eef2f6] text-[#5b6b82] flex items-center justify-center">
-                  <CircleDot className="w-5 h-5 stroke-[1.5]" />
-                </div>
-                <div className="space-y-1">
-                  <div className="text-xs font-semibold text-[#16233a]">
-                    Chưa chọn đối tượng nào
+              <div className="py-10 px-2 text-center space-y-4">
+                <div className="space-y-3">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-[#eef2f6] text-[#5b6b82] flex items-center justify-center">
+                    <CircleDot className="w-5 h-5 stroke-[1.5]" />
                   </div>
-                  <div className="text-[11px] text-[#5b6b82] leading-relaxed">
-                    Nhấp vào một điểm hoặc một hình trên canvas để tùy chỉnh màu sắc, nét vẽ và nhãn.
+                  <div className="space-y-1">
+                    <div className="text-xs font-semibold text-[#16233a]">
+                      Chưa chọn đối tượng nào
+                    </div>
+                    <div className="text-[11px] text-[#5b6b82] leading-relaxed">
+                      Nhấp vào một điểm, hình vẽ hoặc nhãn \path trên canvas để tùy chỉnh.
+                    </div>
                   </div>
                 </div>
+
+                {pathAnnotations.length > 0 && (
+                  <div className="pt-4 border-t border-[#dbe4ee] text-left space-y-2">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#5b6b82]">
+                      Nhãn tùy biến đã thêm ({pathAnnotations.length})
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                      {pathAnnotations.map((ann) => (
+                        <button
+                          key={ann.id}
+                          onClick={() => {
+                            if (onSelectPathAnnotation) {
+                              onSelectPathAnnotation(ann.id);
+                            }
+                          }}
+                          className="w-full text-left p-2 rounded bg-[#f8fafc] border border-[#dbe4ee] hover:bg-[#e4ecf7] hover:border-[#2f5d99]/30 transition-all text-xs flex justify-between items-center"
+                        >
+                          <div className="truncate pr-2 flex items-center gap-1.5">
+                            <span className="font-mono text-[#16233a] truncate font-semibold">{ann.text || '(Không có nội dung)'}</span>
+                          </div>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#5b6b82] shrink-0 font-medium">
+                            {ann.type === 'segment_label' ? 'Đoạn thẳng' : 'Điểm/Góc'}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="pt-3 border-t border-[#dbe4ee] text-left space-y-1.5">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-[#5b6b82]">
                     Mẹo sử dụng
