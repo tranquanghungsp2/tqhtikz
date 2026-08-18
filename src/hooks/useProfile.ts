@@ -6,16 +6,6 @@ export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | null;
 
 export function useProfile(user: User | null) {
   const [status, setStatus] = useState<ApprovalStatus>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-
-  useEffect(() => {import { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
-import { User } from '@supabase/supabase-js';
-
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | null;
-
-export function useProfile(user: User | null) {
-  const [status, setStatus] = useState<ApprovalStatus>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
@@ -45,28 +35,4 @@ export function useProfile(user: User | null) {
   }, [user]);
 
   return { status, isAdmin, loadingProfile };
-}
-
-    if (!user || !isSupabaseConfigured) {
-      setStatus(null);
-      setLoadingProfile(false);
-      return;
-    }
-    setLoadingProfile(true);
-    supabase
-      .from('profiles')
-      .select('status')
-      .eq('id', user.id)
-      .single()
-      .then(({ data, error }) => {
-        if (error) {
-          setStatus(null);
-        } else {
-          setStatus(data?.status ?? null);
-        }
-        setLoadingProfile(false);
-      });
-  }, [user]);
-
-  return { status, loadingProfile };
 }
