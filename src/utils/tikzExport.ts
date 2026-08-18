@@ -217,7 +217,7 @@ function buildFullSubpathString(
   return null;
 }
 
-export function generateTikZCode(
+export function generateTikZCodeWithLineMap(
   points: GeoPoint[],
   shapes: GeoShape[],
   options: TikZExportOptions = {
@@ -227,7 +227,7 @@ export function generateTikZCode(
     scale: 1,
     useColorDefinitions: true,
   }
-): string {
+): { code: string; shapeToLines: Map<string, number[]> } {
   const pointsMap = new Map<string, GeoPoint>();
   points.forEach((p) => pointsMap.set(p.id, p));
 
@@ -237,6 +237,13 @@ export function generateTikZCode(
     `(${formatNumber(p.x)}, ${formatNumber(p.y)})`;
 
   const lines: string[] = [];
+
+  const lineOwnerShapeIds: string[][] = [];
+  const trackOwnership = (beforeLen: number, afterArr: string[], shapeIds: string[]) => {
+    for (let i = beforeLen; i < afterArr.length; i++) {
+      lineOwnerShapeIds[i] = shapeIds;
+    }
+  };
 
   if (options.standalone) {
     lines.push('% ==========================================');
@@ -355,11 +362,13 @@ export function generateTikZCode(
     }
 
     if (subpaths.length > 0) {
+      const _beforeLen = shapeDrawLines.length;
       const styleOpts = getStyleOptions(first.style);
       const optStr = styleOpts.length > 0 ? `[${styleOpts.join(', ')}]` : '';
       shapeDrawLines.push(`  % --- ${groupShapes.length} đường đã gộp (tự nối liên tục các phần liền nhau) ---`);
       shapeDrawLines.push(`  \\draw${optStr} ${subpaths.join(' ')};`);
       groupShapes.forEach((s) => mergedShapeIds.add(s.id));
+      trackOwnership(_beforeLen, shapeDrawLines, groupShapes.map((s) => s.id));
     }
   }
 
@@ -413,6 +422,7 @@ export function generateTikZCode(
     }
     if (!ok) continue;
 
+    const _beforeLen = shapeDrawLines.length;
     const closed = isChainClosed(pieces, order);
     if (closed) pathStr += ' -- cycle';
 
@@ -422,11 +432,13 @@ export function generateTikZCode(
     shapeDrawLines.push(`  % --- ${groupShapes.length} đường đã nối liên tục${closed ? ', khép kín' : ''} ---`);
     shapeDrawLines.push(`  \\draw${optStr} ${pathStr};`);
     groupShapes.forEach((s) => mergedShapeIds.add(s.id));
+    trackOwnership(_beforeLen, shapeDrawLines, groupShapes.map((s) => s.id));
   }
 
   if (shapes.length > 0) {
     for (const shape of shapes) {
       if (mergedShapeIds.has(shape.id)) continue;
+      const _shapeBeforeLen = shapeDrawLines.length;
       const styleOpts = getStyleOptions(shape.style);
       const optStr = styleOpts.length > 0 ? `[${styleOpts.join(', ')}]` : '';
 
@@ -646,12 +658,15 @@ export function generateTikZCode(
           break;
         }
       }
+      trackOwnership(_shapeBeforeLen, shapeDrawLines, [shape.id]);
     }
   }
 
+  let shapeDrawLinesOffset = 0;
   if (shapeDrawLines.length > 0) {
     lines.push('');
     lines.push('  % --- Vẽ các hình hình học (toạ độ số trực tiếp, mỗi dòng độc lập) ---');
+    shapeDrawLinesOffset = lines.length;
     lines.push(...shapeDrawLines);
   }
 
@@ -684,5 +699,32 @@ export function generateTikZCode(
     lines.push('\\end{document}');
   }
 
-  return lines.join('\n');
+  const code = lines.join('\n');
+
+  const shapeToLines = new Map<string, number[]>();
+  lineOwnerShapeIds.forEach((ids, idxInShapeDrawLines) => {
+    if (!ids) return;
+    const absoluteLineIndex = shapeDrawLinesOffset + idxInShapeDrawLines;
+    ids.forEach((id) => {
+      const arr = shapeToLines.get(id) || [];
+      arr.push(absoluteLineIndex);
+      shapeToLines.set(id, arr);
+    });
+  });
+
+  return { code, shapeToLines };
+}
+
+export function generateTikZCode(
+  points: GeoPoint[],
+  shapes: GeoShape[],
+  options: TikZExportOptions = {
+    standalone: true,
+    includeLabels: true,
+    includePoints: true,
+    scale: 1,
+    useColorDefinitions: true,
+  }
+): string {
+  return generateTikZCodeWithLineMap(points, shapes, options).code;
 }
