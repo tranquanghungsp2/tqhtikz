@@ -18,6 +18,7 @@ import { evaluateAllFormulas } from './utils/formulaEvaluator';
 import { FormulaPoint, FormulaVariable, FormulaPathGroup } from './types-formula';
 import { FormulaPanel } from './components/FormulaPanel';
 import { FormulaCanvas } from './components/FormulaCanvas';
+import { VisibilityManager } from './components/VisibilityManager';
 
 export default function App() {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -110,6 +111,7 @@ export default function App() {
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<ToolType>('select');
+  const [showVisibilityManager, setShowVisibilityManager] = useState(false);
 
   const [formulaMode, setFormulaMode] = useState(false);
   const [formulaPoints, setFormulaPoints] = useState<FormulaPoint[]>([
@@ -898,6 +900,7 @@ export default function App() {
         bgImage={bgImage}
         formulaMode={formulaMode}
         onToggleFormulaMode={() => setFormulaMode((v) => !v)}
+        onOpenVisibilityManager={() => setShowVisibilityManager(true)}
         onLoadDrawing={(loadedPoints, loadedShapes, loadedPointCounter, loadedBgImage) => {
           setPoints(loadedPoints);
           setShapes(loadedShapes);
@@ -1102,6 +1105,16 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {showVisibilityManager && (
+        <VisibilityManager
+          points={points}
+          shapes={shapes}
+          onUpdatePoint={handleUpdatePoint}
+          onUpdateShape={handleUpdateShape}
+          onClose={() => setShowVisibilityManager(false)}
+        />
       )}
     </div>
   );
