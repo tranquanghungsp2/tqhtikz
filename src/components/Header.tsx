@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Eye,
 } from 'lucide-react';
-import { GeoPoint, GeoShape, BackgroundImageState } from '../types';
+import { GeoPoint, GeoShape, BackgroundImageState, PathAnnotation } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
 import { AdminPanel } from './AdminPanel';
@@ -33,7 +33,8 @@ interface HeaderProps {
     points: GeoPoint[],
     shapes: GeoShape[],
     pointCounter: number,
-    bgImage: BackgroundImageState | null
+    bgImage: BackgroundImageState | null,
+    pathAnnotations?: PathAnnotation[]
   ) => void;
   formulaMode: boolean;
   onToggleFormulaMode: () => void;
