@@ -263,6 +263,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [pickedColor, setPickedColor] = useState<{ hex: string; r: number; g: number; b: number } | null>(null);
   const [colorCopied, setColorCopied] = useState(false);
   const sampleCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isShiftHeld, setIsShiftHeld] = useState(false); // giữ Shift khi vẽ đoạn thẳng để bắt góc 0/90/180/270°
 
   const LEGACY_LABEL_POS_TO_ANGLE: Record<string, number> = {
     above: 90,
@@ -576,10 +577,41 @@ export const Canvas: React.FC<CanvasProps> = ({
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setMultiSelectedIds([]);
+      if (e.key === 'Shift') setIsShiftHeld(true);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftHeld(false);
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
   }, []);
+
+  // Bấm giữ Shift khi vẽ đoạn thẳng: nếu góc đang vẽ gần 0°/90°/180°/270° (lệch trong
+  // ngưỡng SEGMENT_SNAP_THRESHOLD_DEG), tự bẻ về đúng góc đó để có đường ngang/dọc chuẩn,
+  // giữ nguyên khoảng cách tới điểm đầu.
+  const SEGMENT_SNAP_THRESHOLD_DEG = 5;
+  const snapToAxisAngle = (
+    from: { x: number; y: number },
+    to: { x: number; y: number }
+  ): { x: number; y: number } => {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 1e-6) return to;
+    const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
+    const nearest90 = Math.round(angleDeg / 90) * 90;
+    const diff = Math.abs(angleDeg - nearest90);
+    if (diff > SEGMENT_SNAP_THRESHOLD_DEG) return to;
+    const rad = (nearest90 * Math.PI) / 180;
+    return {
+      x: from.x + Math.cos(rad) * distance,
+      y: from.y + Math.sin(rad) * distance,
+    };
+  };
 
   // Points map for fast lookup
   const pointsMap = new Map<string, GeoPoint>();
@@ -1051,7 +1083,14 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     // ----------------- TOOL: SEGMENT -----------------
     if (activeTool === 'segment') {
-      const pt = getOrCreatePoint(sx, sy, wx, wy);
+      let finalWx = wx;
+      let finalWy = wy;
+      if (tempPoints.length === 1 && isShiftHeld) {
+        const snapped = snapToAxisAngle(tempPoints[0], { x: wx, y: wy });
+        finalWx = snapped.x;
+        finalWy = snapped.y;
+      }
+      const pt = getOrCreatePoint(sx, sy, finalWx, finalWy);
       if (tempPoints.length === 0) {
         setTempPoints([pt]);
       } else {
@@ -1892,7 +1931,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       case 'segment':
         return tempPoints.length === 0
           ? 'Bước 1/2: Nhấp chọn điểm đầu'
-          : 'Bước 2/2: Nhấp chọn điểm cuối (đường màu cam là nét đang vẽ)';
+          : 'Bước 2/2: Nhấp chọn điểm cuối · Giữ Shift để bắt ngang/dọc (0°/90°)';
       case 'path_segment_label':
         return tempPoints.length === 0
           ? 'Nhãn đoạn: Bước 1/2: Nhấp chọn điểm thứ nhất'
@@ -2649,13 +2688,21 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     if (activeTool === 'segment' && tempPoints.length === 1) {
       const s1 = worldToScreen(tempPoints[0].x, tempPoints[0].y, viewport);
+      let previewEndW = mouseW;
+      let isSnapping = false;
+      if (isShiftHeld) {
+        const snapped = snapToAxisAngle(tempPoints[0], mouseW);
+        isSnapping = snapped.x !== mouseW.x || snapped.y !== mouseW.y;
+        previewEndW = snapped;
+      }
+      const s2 = worldToScreen(previewEndW.x, previewEndW.y, viewport);
       return (
         <line
           x1={s1.x}
           y1={s1.y}
-          x2={mouseS.x}
-          y2={mouseS.y}
-          stroke={previewColor}
+          x2={s2.x}
+          y2={s2.y}
+          stroke={isSnapping ? '#059669' : previewColor}
           strokeWidth={1.5}
           strokeDasharray="5 4"
         />
