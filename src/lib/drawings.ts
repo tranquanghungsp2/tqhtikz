@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { GeoPoint, GeoShape } from '../types';
+import { GeoPoint, GeoShape, BackgroundImageState } from '../types';
 
 export interface SavedDrawing {
   id: string;
@@ -7,6 +7,7 @@ export interface SavedDrawing {
   points: GeoPoint[];
   shapes: GeoShape[];
   point_counter: number;
+  background_image: BackgroundImageState | null;
   updated_at: string;
 }
 
@@ -14,7 +15,7 @@ export async function listMyDrawings(): Promise<SavedDrawing[]> {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await supabase
     .from('drawings')
-    .select('id, name, points, shapes, point_counter, updated_at')
+    .select('id, name, points, shapes, point_counter, background_image, updated_at')
     .order('updated_at', { ascending: false });
   if (error) throw error;
   return data as SavedDrawing[];
@@ -24,7 +25,8 @@ export async function saveNewDrawing(
   name: string,
   points: GeoPoint[],
   shapes: GeoShape[],
-  pointCounter: number
+  pointCounter: number,
+  bgImage: BackgroundImageState | null
 ): Promise<void> {
   if (!isSupabaseConfigured) throw new Error('Cơ sở dữ liệu Supabase chưa được cấu hình.');
   const { data: userData } = await supabase.auth.getUser();
@@ -37,6 +39,7 @@ export async function saveNewDrawing(
     points,
     shapes,
     point_counter: pointCounter,
+    background_image: bgImage && bgImage.dataUrl ? bgImage : null,
   });
   if (error) throw error;
 }
@@ -45,12 +48,19 @@ export async function updateDrawing(
   id: string,
   points: GeoPoint[],
   shapes: GeoShape[],
-  pointCounter: number
+  pointCounter: number,
+  bgImage: BackgroundImageState | null
 ): Promise<void> {
   if (!isSupabaseConfigured) throw new Error('Cơ sở dữ liệu Supabase chưa được cấu hình.');
   const { error } = await supabase
     .from('drawings')
-    .update({ points, shapes, point_counter: pointCounter, updated_at: new Date().toISOString() })
+    .update({
+      points,
+      shapes,
+      point_counter: pointCounter,
+      background_image: bgImage && bgImage.dataUrl ? bgImage : null,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id);
   if (error) throw error;
 }
