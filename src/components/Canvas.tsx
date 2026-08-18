@@ -2151,6 +2151,8 @@ export const Canvas: React.FC<CanvasProps> = ({
       setShapeDragStart({ wx: rawWorld.x, wy: rawWorld.y, pointSnapshots, controlsSnapshot });
     };
 
+    const shapeOpacity = shape.hidden ? 0.35 : 1;
+
     return (
       <g
         key={shape.id}
@@ -2158,6 +2160,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         onMouseDown={handleShapeMouseDown}
         className={activeTool === 'select' ? 'cursor-move' : 'cursor-pointer'}
         transform={transformAttr}
+        opacity={shapeOpacity}
       >
         {content}
       </g>
@@ -2653,11 +2656,13 @@ export const Canvas: React.FC<CanvasProps> = ({
       }
 
       const isHidden = pt.style?.pointStyle === 'hidden';
+      const pointOpacity = pt.hidden ? 0.35 : 1;
 
       return (
         <g
           key={pt.id}
           className="cursor-move select-none"
+          opacity={pointOpacity}
           onClick={(e) => {
             e.stopPropagation();
             onSelectPoint(pt.id);
