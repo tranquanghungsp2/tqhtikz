@@ -122,6 +122,24 @@ export default function App() {
     { id: 'g1', name: 'Nhóm 1', order: 0 },
   ]);
 
+  const [focusedFormulaPointId, setFocusedFormulaPointId] = useState<string | null>(null);
+  const [pickingTemplateKind, setPickingTemplateKind] = useState<
+    'reflect' | 'ratio' | 'projection' | 'rotate' | 'intersection' | null
+  >(null);
+  const [pickedFormulaPointNames, setPickedFormulaPointNames] = useState<string[]>([]);
+
+  const insertFormulaIntoFocusedPoint = useCallback(
+    (formulaStr: string) => {
+      if (!focusedFormulaPointId) return;
+      setFormulaPoints((prev) =>
+        prev.map((p) => (p.id === focusedFormulaPointId ? { ...p, formula: formulaStr } : p))
+      );
+      setPickingTemplateKind(null);
+      setPickedFormulaPointNames([]);
+    },
+    [focusedFormulaPointId]
+  );
+
   const formulaResult = useMemo(
     () => evaluateAllFormulas(formulaPoints, formulaVariables),
     [formulaPoints, formulaVariables]
@@ -915,9 +933,25 @@ export default function App() {
               groups={formulaGroups}
               onUpdateGroups={setFormulaGroups}
               evalResult={formulaResult}
+              focusedPointId={focusedFormulaPointId}
+              onFocusPoint={setFocusedFormulaPointId}
+              pickingTemplateKind={pickingTemplateKind}
+              onSetPickingTemplateKind={setPickingTemplateKind}
+              pickedPointNames={pickedFormulaPointNames}
             />
             {/* Column 2: Formula Canvas */}
-            <FormulaCanvas points={formulaPoints} evalResult={formulaResult} />
+            <FormulaCanvas
+              points={formulaPoints}
+              evalResult={formulaResult}
+              pickingTemplateKind={pickingTemplateKind}
+              pickedPointNames={pickedFormulaPointNames}
+              onPickPoint={(name) => setPickedFormulaPointNames((prev) => [...prev, name])}
+              onCancelPicking={() => {
+                setPickingTemplateKind(null);
+                setPickedFormulaPointNames([]);
+              }}
+              onFinishPicking={insertFormulaIntoFocusedPoint}
+            />
           </>
         ) : (
           <>
