@@ -328,31 +328,6 @@ export const Canvas: React.FC<CanvasProps> = ({
               opacity={0.6}
             />
 
-            {isSelected && (
-              <rect
-                x={tx - 35}
-                y={ty - 12}
-                width={70}
-                height={24}
-                rx={4}
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth={2}
-              />
-            )}
-
-            <rect
-              x={tx - 40}
-              y={ty - 12}
-              width={80}
-              height={24}
-              rx={3}
-              fill={isSelected ? '#eff6ff' : '#f8fafc'}
-              stroke={isSelected ? '#3b82f6' : '#cbd5e1'}
-              strokeWidth={1}
-              opacity={0.9}
-            />
-
             <foreignObject
               x={tx - 40}
               y={ty - 12}
@@ -415,31 +390,6 @@ export const Canvas: React.FC<CanvasProps> = ({
               cy={ty}
               r={3}
               fill={isSelected ? '#3b82f6' : '#94a3b8'}
-            />
-
-            {isSelected && (
-              <rect
-                x={tx - 30}
-                y={ty - 12}
-                width={60}
-                height={24}
-                rx={4}
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth={2}
-              />
-            )}
-
-            <rect
-              x={tx - 36}
-              y={ty - 12}
-              width={72}
-              height={24}
-              rx={3}
-              fill={isSelected ? '#eff6ff' : '#f8fafc'}
-              stroke={isSelected ? '#3b82f6' : '#cbd5e1'}
-              strokeWidth={1}
-              opacity={0.9}
             />
 
             <foreignObject
