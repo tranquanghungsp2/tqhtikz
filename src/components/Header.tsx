@@ -8,7 +8,7 @@ import {
   FolderOpen,
   Trash2,
 } from 'lucide-react';
-import { GeoPoint, GeoShape } from '../types';
+import { GeoPoint, GeoShape, BackgroundImageState } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import {
@@ -23,13 +23,20 @@ interface HeaderProps {
   points: GeoPoint[];
   shapes: GeoShape[];
   pointCounter: number;
-  onLoadDrawing: (points: GeoPoint[], shapes: GeoShape[], pointCounter: number) => void;
+  bgImage: BackgroundImageState;
+  onLoadDrawing: (
+    points: GeoPoint[],
+    shapes: GeoShape[],
+    pointCounter: number,
+    bgImage: BackgroundImageState | null
+  ) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   points,
   shapes,
   pointCounter,
+  bgImage,
   onLoadDrawing,
 }) => {
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
@@ -60,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (!saveNameInput.trim()) return;
     setBusy(true);
     try {
-      await saveNewDrawing(saveNameInput.trim(), points, shapes, pointCounter);
+      await saveNewDrawing(saveNameInput.trim(), points, shapes, pointCounter, bgImage);
       setSaveNameInput('');
       setSavedDrawings(await listMyDrawings());
     } catch (error) {
@@ -74,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (!currentDrawingId) return;
     setBusy(true);
     try {
-      await updateDrawing(currentDrawingId, points, shapes, pointCounter);
+      await updateDrawing(currentDrawingId, points, shapes, pointCounter, bgImage);
       setSavedDrawings(await listMyDrawings());
     } catch (error) {
       console.error('Error updating drawing:', error);
@@ -84,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const handleLoad = (d: SavedDrawing) => {
-    onLoadDrawing(d.points, d.shapes, d.point_counter);
+    onLoadDrawing(d.points, d.shapes, d.point_counter, d.background_image);
     setCurrentDrawingId(d.id);
     setShowSaveMenu(false);
   };
