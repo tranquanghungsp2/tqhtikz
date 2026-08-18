@@ -18,6 +18,7 @@ import {
   BezierControlPoint,
   BackgroundImageState,
   PathAnnotation,
+  RightAngleMark,
 } from '../types';
 import {
   worldToScreen,
@@ -93,6 +94,11 @@ interface CanvasProps {
   selectedPathAnnotationId: string | null;
   onSelectPathAnnotation: (id: string | null) => void;
   onAddPathAnnotation: (ann: PathAnnotation) => void;
+  rightAngleMarks: RightAngleMark[];
+  selectedRightAngleMarkId: string | null;
+  onSelectRightAngleMark: (id: string | null) => void;
+  onAddRightAngleMark: (mark: RightAngleMark) => void;
+  onUpdateRightAngleMark?: (id: string, updates: Partial<RightAngleMark>) => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -134,6 +140,11 @@ export const Canvas: React.FC<CanvasProps> = ({
   selectedPathAnnotationId,
   onSelectPathAnnotation,
   onAddPathAnnotation,
+  rightAngleMarks,
+  selectedRightAngleMarkId,
+  onSelectRightAngleMark,
+  onAddRightAngleMark,
+  onUpdateRightAngleMark,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -421,6 +432,88 @@ export const Canvas: React.FC<CanvasProps> = ({
       }
 
       return null;
+    });
+  };
+
+  // ----------------------------------------------------
+  // Render Right Angle Marks (Ký hiệu góc vuông 3 điểm)
+  // ----------------------------------------------------
+  const renderRightAngleMarks = () => {
+    const pointsMap = new Map<string, GeoPoint>();
+    points.forEach((p) => pointsMap.set(p.id, p));
+
+    return rightAngleMarks.map((mark) => {
+      const p1 = pointsMap.get(mark.point1Id);
+      const pVertex = pointsMap.get(mark.vertexId);
+      const p2 = pointsMap.get(mark.point2Id);
+      if (!p1 || !pVertex || !p2) return null;
+
+      const s1 = worldToScreen(p1.x, p1.y, viewport);
+      const sVertex = worldToScreen(pVertex.x, pVertex.y, viewport);
+      const s2 = worldToScreen(p2.x, p2.y, viewport);
+
+      const d1x = s1.x - sVertex.x;
+      const d1y = s1.y - sVertex.y;
+      const len1 = Math.hypot(d1x, d1y) || 1;
+      const u1x = d1x / len1;
+      const u1y = d1y / len1;
+
+      const d2x = s2.x - sVertex.x;
+      const d2y = s2.y - sVertex.y;
+      const len2 = Math.hypot(d2x, d2y) || 1;
+      const u2x = d2x / len2;
+      const u2y = d2y / len2;
+
+      // 10mm = 1cm = viewport.scale px
+      const radiusPx = (mark.angleRadiusMm / 10) * viewport.scale;
+      const c1 = { x: sVertex.x + u1x * radiusPx, y: sVertex.y + u1y * radiusPx };
+      const c2 = { x: sVertex.x + (u1x + u2x) * radiusPx, y: sVertex.y + (u1y + u2y) * radiusPx };
+      const c3 = { x: sVertex.x + u2x * radiusPx, y: sVertex.y + u2y * radiusPx };
+
+      const isSelected = selectedRightAngleMarkId === mark.id;
+
+      return (
+        <g
+          key={mark.id}
+          className="cursor-pointer select-none"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectRightAngleMark(mark.id);
+            onSelectPoint(null);
+            onSelectShape(null);
+            onSelectPathAnnotation(null);
+          }}
+        >
+          {/* Highlight aura if selected */}
+          {isSelected && (
+            <polyline
+              points={`${c1.x},${c1.y} ${c2.x},${c2.y} ${c3.x},${c3.y}`}
+              stroke="#3b82f6"
+              strokeWidth={4.5}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="miter"
+              opacity={0.6}
+            />
+          )}
+
+          {/* Main mark */}
+          <polyline
+            points={`${c1.x},${c1.y} ${c2.x},${c2.y} ${c3.x},${c3.y}`}
+            stroke={isSelected ? '#2563eb' : '#16233a'}
+            strokeWidth={1.5}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="miter"
+          />
+
+          {/* Invisible click hit area */}
+          <polygon
+            points={`${sVertex.x},${sVertex.y} ${c1.x},${c1.y} ${c2.x},${c2.y} ${c3.x},${c3.y}`}
+            fill="transparent"
+          />
+        </g>
+      );
     });
   };
 
@@ -886,6 +979,8 @@ export const Canvas: React.FC<CanvasProps> = ({
       if (nearestPt) {
         onSelectPoint(nearestPt.id);
         onSelectShape(null);
+        onSelectPathAnnotation(null);
+        onSelectRightAngleMark(null);
         setMultiSelectedIds([]);
         // Điểm phụ thuộc (giao điểm) không cho kéo tay — vị trí luôn được tính tự động
         // từ 2 hình gốc, kéo tay sẽ bị ghi đè ngay lập tức nên không cho phép để tránh gây khó hiểu.
@@ -897,6 +992,8 @@ export const Canvas: React.FC<CanvasProps> = ({
       // If clicked on canvas background without hitting any point or shape: wait for drag threshold before panning
       onSelectPoint(null);
       onSelectShape(null);
+      onSelectPathAnnotation(null);
+      onSelectRightAngleMark(null);
       setMultiSelectedIds([]);
       setPendingPanStart({
         x: e.clientX,
@@ -1010,6 +1107,32 @@ export const Canvas: React.FC<CanvasProps> = ({
         screenY: s.y,
       });
       setPendingLabelText('');
+      return;
+    }
+
+    // ----------------- TOOL: RIGHT ANGLE MARK (Ký hiệu góc vuông 3 điểm) -----------------
+    if (activeTool === 'right_angle_mark') {
+      const pt = getOrCreatePoint(sx, sy, wx, wy);
+      if (tempPoints.length === 0) {
+        setTempPoints([pt]);
+      } else if (tempPoints.length === 1) {
+        if (pt.id !== tempPoints[0].id) {
+          setTempPoints([tempPoints[0], pt]);
+        }
+      } else {
+        const [p1, pVertex] = tempPoints;
+        if (pt.id !== pVertex.id && pt.id !== p1.id) {
+          const newMark: RightAngleMark = {
+            id: `ram_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            point1Id: p1.id,
+            vertexId: pVertex.id,
+            point2Id: pt.id,
+            angleRadiusMm: 3, // mặc định 3mm
+          };
+          onAddRightAngleMark(newMark);
+        }
+        setTempPoints([]);
+      }
       return;
     }
 
@@ -1584,11 +1707,15 @@ export const Canvas: React.FC<CanvasProps> = ({
         );
         onSelectShape(null);
         onSelectPoint(null);
+        onSelectPathAnnotation(null);
+        onSelectRightAngleMark(null);
         return;
       }
       setMultiSelectedIds([]);
       onSelectShape(shapeId);
       onSelectPoint(null);
+      onSelectPathAnnotation(null);
+      onSelectRightAngleMark(null);
       return;
     }
 
@@ -1772,6 +1899,10 @@ export const Canvas: React.FC<CanvasProps> = ({
           : 'Nhãn đoạn: Bước 2/2: Nhấp chọn điểm thứ hai để gắn nhãn nối';
       case 'path_offset_label':
         return 'Nhãn góc / lệch: Nhấp chọn 1 điểm để đặt nhãn góc/vị trí lệch tâm';
+      case 'right_angle_mark':
+        if (tempPoints.length === 0) return 'Ký hiệu vuông: Bước 1/3: Nhấp chọn điểm thứ nhất (\\x)';
+        if (tempPoints.length === 1) return 'Ký hiệu vuông: Bước 2/3: Nhấp chọn đỉnh góc vuông (\\y)';
+        return 'Ký hiệu vuông: Bước 3/3: Nhấp chọn điểm thứ hai (\\z) để tạo ký hiệu vuông';
       case 'polyline':
         return `Đã chọn ${polylinePoints.length} điểm · Nhấp điểm tiếp theo, nhấp lại điểm đầu để đóng hoặc bấm Hoàn thành`;
       case 'circle':
@@ -2548,6 +2679,54 @@ export const Canvas: React.FC<CanvasProps> = ({
       );
     }
 
+    // Ký hiệu góc vuông (3 điểm)
+    if (activeTool === 'right_angle_mark') {
+      if (tempPoints.length === 1) {
+        const s1 = worldToScreen(tempPoints[0].x, tempPoints[0].y, viewport);
+        return (
+          <g>
+            <circle cx={s1.x} cy={s1.y} r={7} fill="none" stroke={previewColor} strokeWidth={2} strokeDasharray="3 2" />
+            <line x1={s1.x} y1={s1.y} x2={mouseS.x} y2={mouseS.y} stroke={previewColor} strokeWidth={1} strokeDasharray="4 3" opacity={0.6} />
+          </g>
+        );
+      }
+      if (tempPoints.length === 2) {
+        const [p1, pVertex] = tempPoints;
+        const s1 = worldToScreen(p1.x, p1.y, viewport);
+        const sVertex = worldToScreen(pVertex.x, pVertex.y, viewport);
+        const d1x = s1.x - sVertex.x;
+        const d1y = s1.y - sVertex.y;
+        const len1 = Math.hypot(d1x, d1y) || 1;
+        const u1x = d1x / len1;
+        const u1y = d1y / len1;
+
+        const d2x = mouseS.x - sVertex.x;
+        const d2y = mouseS.y - sVertex.y;
+        const len2 = Math.hypot(d2x, d2y) || 1;
+        const u2x = d2x / len2;
+        const u2y = d2y / len2;
+
+        const radiusPx = 0.3 * viewport.scale; // 3mm mặc định = 0.3cm
+        const c1 = { x: sVertex.x + u1x * radiusPx, y: sVertex.y + u1y * radiusPx };
+        const c2 = { x: sVertex.x + (u1x + u2x) * radiusPx, y: sVertex.y + (u1y + u2y) * radiusPx };
+        const c3 = { x: sVertex.x + u2x * radiusPx, y: sVertex.y + u2y * radiusPx };
+
+        return (
+          <g>
+            <line x1={s1.x} y1={s1.y} x2={sVertex.x} y2={sVertex.y} stroke={previewColor} strokeWidth={1.5} strokeDasharray="4 3" />
+            <line x1={sVertex.x} y1={sVertex.y} x2={mouseS.x} y2={mouseS.y} stroke={previewColor} strokeWidth={1.5} strokeDasharray="4 3" />
+            <polyline
+              points={`${c1.x},${c1.y} ${c2.x},${c2.y} ${c3.x},${c3.y}`}
+              stroke="#059669"
+              strokeWidth={1.8}
+              fill="none"
+            />
+            <circle cx={sVertex.x} cy={sVertex.y} r={4} fill="#059669" opacity={0.8} />
+          </g>
+        );
+      }
+    }
+
     if (activeTool === 'polyline' && polylinePoints.length > 0) {
       const placedPts = polylinePoints.map((id) => pointsMap.get(id)).filter(Boolean) as GeoPoint[];
       if (placedPts.length > 0) {
@@ -3258,6 +3437,9 @@ export const Canvas: React.FC<CanvasProps> = ({
 
         {/* Layer 2.5: Path Annotations (Nhãn ghi chú) */}
         <g id="path-annotations-layer">{renderPathAnnotations()}</g>
+
+        {/* Layer 2.6: Right Angle Marks (Ký hiệu góc vuông 3 điểm) */}
+        <g id="right-angle-marks-layer">{renderRightAngleMarks()}</g>
 
         {/* Layer 3: Geometric Points & Labels */}
         <g id="points-layer">{renderPoints()}</g>
