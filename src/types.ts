@@ -44,6 +44,8 @@ export interface GeoPoint {
   x: number; // world x in cm
   y: number; // world y in cm
   labelPos?: LabelPosition;
+  labelAngleDeg?: number; // góc nhãn tự do (độ, 0=phải, 90=trên, quy ước toán học), nếu có thì ƯU TIÊN hơn labelPos
+  labelDistance?: number; // khoảng cách nhãn tới điểm, đơn vị pt (typographic point, khớp TikZ), mặc định 8
   hidden?: boolean; // true = ẩn khỏi mã TikZ xuất ra (dùng toạ độ thô), vẫn hiện mờ trên canvas
   style?: {
     color?: string;
