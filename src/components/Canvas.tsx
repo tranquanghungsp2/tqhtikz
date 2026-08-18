@@ -7,6 +7,7 @@ import {
   Pipette,
   Check,
   MousePointer,
+  X,
 } from 'lucide-react';
 import {
   GeoPoint,
@@ -51,6 +52,7 @@ import {
   generatePointLabel,
 } from '../utils/geometry';
 import { getMathLabel } from '../utils/tikzExport';
+import { renderLatexToHtml } from '../utils/latexRender';
 
 interface CanvasProps {
   points: GeoPoint[];
@@ -185,6 +187,61 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Tool-specific creation step states
   const [tempPoints, setTempPoints] = useState<GeoPoint[]>([]);
+
+  // Hộp nhập nội dung nhãn \path — hiện ra SAU KHI đã chọn xong điểm (2 điểm cho nhãn đoạn,
+  // 1 điểm cho nhãn góc/lệch tâm), thay vì tạo nhãn ngay với text mặc định.
+  const [pendingPathAnnotation, setPendingPathAnnotation] = useState<
+    | { kind: 'segment_label'; point1Id: string; point2Id: string; screenX: number; screenY: number }
+    | { kind: 'point_offset_label'; pointId: string; screenX: number; screenY: number }
+    | null
+  >(null);
+  const [pendingLabelText, setPendingLabelText] = useState('');
+  const pendingLabelInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (pendingPathAnnotation) {
+      requestAnimationFrame(() => pendingLabelInputRef.current?.focus());
+    }
+  }, [pendingPathAnnotation]);
+
+  const confirmPendingPathAnnotation = useCallback(() => {
+    if (!pendingPathAnnotation) return;
+    const text = pendingLabelText.trim();
+    if (!text) {
+      setPendingPathAnnotation(null);
+      setPendingLabelText('');
+      return;
+    }
+    if (pendingPathAnnotation.kind === 'segment_label') {
+      onAddPathAnnotation({
+        id: `pa_seg_${Date.now()}`,
+        type: 'segment_label',
+        point1Id: pendingPathAnnotation.point1Id,
+        point2Id: pendingPathAnnotation.point2Id,
+        text,
+        pos: 0.5,
+        positionOption: 'above',
+      });
+    } else {
+      onAddPathAnnotation({
+        id: `pa_off_${Date.now()}`,
+        type: 'point_offset_label',
+        pointId: pendingPathAnnotation.pointId,
+        text,
+        angle: 30,
+        distancePt: 20,
+      });
+    }
+    setPendingPathAnnotation(null);
+    setPendingLabelText('');
+    onSelectTool('select');
+  }, [pendingPathAnnotation, pendingLabelText, onAddPathAnnotation, onSelectTool]);
+
+  const cancelPendingPathAnnotation = useCallback(() => {
+    setPendingPathAnnotation(null);
+    setPendingLabelText('');
+    onSelectTool('select');
+  }, [onSelectTool]);
   const [selectedRefShapeId, setSelectedRefShapeId] = useState<string | null>(null);
   const [axisRef, setAxisRef] = useState<'x' | 'y' | null>(null);
   const [intersectionSelectedShape1, setIntersectionSelectedShape1] = useState<string | null>(null);
@@ -285,10 +342,10 @@ export const Canvas: React.FC<CanvasProps> = ({
             )}
 
             <rect
-              x={tx - 32}
-              y={ty - 10}
-              width={64}
-              height={20}
+              x={tx - 40}
+              y={ty - 12}
+              width={80}
+              height={24}
               rx={3}
               fill={isSelected ? '#eff6ff' : '#f8fafc'}
               stroke={isSelected ? '#3b82f6' : '#cbd5e1'}
@@ -296,15 +353,28 @@ export const Canvas: React.FC<CanvasProps> = ({
               opacity={0.9}
             />
 
-            <text
-              x={tx}
-              y={ty + 4}
-              textAnchor="middle"
-              className="text-[11px] font-math font-medium"
-              fill={isSelected ? '#1d4ed8' : '#334155'}
+            <foreignObject
+              x={tx - 40}
+              y={ty - 12}
+              width={80}
+              height={24}
+              style={{ pointerEvents: 'none', overflow: 'visible' }}
             >
-              {item.text}
-            </text>
+              <div
+                {...({ xmlns: 'http://www.w3.org/1999/xhtml' } as any)}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '13px',
+                  whiteSpace: 'nowrap',
+                  color: isSelected ? '#1d4ed8' : '#334155',
+                }}
+                dangerouslySetInnerHTML={{ __html: renderLatexToHtml(item.text) }}
+              />
+            </foreignObject>
           </g>
         );
       } else if (item.type === 'point_offset_label') {
@@ -361,10 +431,10 @@ export const Canvas: React.FC<CanvasProps> = ({
             )}
 
             <rect
-              x={tx - 27}
-              y={ty - 10}
-              width={54}
-              height={20}
+              x={tx - 36}
+              y={ty - 12}
+              width={72}
+              height={24}
               rx={3}
               fill={isSelected ? '#eff6ff' : '#f8fafc'}
               stroke={isSelected ? '#3b82f6' : '#cbd5e1'}
@@ -372,15 +442,28 @@ export const Canvas: React.FC<CanvasProps> = ({
               opacity={0.9}
             />
 
-            <text
-              x={tx}
-              y={ty + 4}
-              textAnchor="middle"
-              className="text-[11px] font-math font-medium"
-              fill={isSelected ? '#1d4ed8' : '#334155'}
+            <foreignObject
+              x={tx - 36}
+              y={ty - 12}
+              width={72}
+              height={24}
+              style={{ pointerEvents: 'none', overflow: 'visible' }}
             >
-              {item.text}
-            </text>
+              <div
+                {...({ xmlns: 'http://www.w3.org/1999/xhtml' } as any)}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '13px',
+                  whiteSpace: 'nowrap',
+                  color: isSelected ? '#1d4ed8' : '#334155',
+                }}
+                dangerouslySetInnerHTML={{ __html: renderLatexToHtml(item.text) }}
+              />
+            </foreignObject>
           </g>
         );
       }
@@ -946,17 +1029,17 @@ export const Canvas: React.FC<CanvasProps> = ({
       } else {
         const p1 = tempPoints[0];
         if (p1.id !== pt.id) {
-          const newAnnotation: PathAnnotation = {
-            id: `pa_seg_${Date.now()}`,
-            type: 'segment_label',
+          // Đã chọn đủ 2 điểm — hiện hộp nhập nội dung nhãn tại trung điểm, CHƯA tạo nhãn.
+          const s1 = worldToScreen(p1.x, p1.y, viewport);
+          const s2 = worldToScreen(pt.x, pt.y, viewport);
+          setPendingPathAnnotation({
+            kind: 'segment_label',
             point1Id: p1.id,
             point2Id: pt.id,
-            text: '$7\\,m$',
-            pos: 0.5,
-            positionOption: 'above',
-          };
-          onAddPathAnnotation(newAnnotation);
-          onSelectTool('select');
+            screenX: (s1.x + s2.x) / 2,
+            screenY: (s1.y + s2.y) / 2,
+          });
+          setPendingLabelText('');
         }
         setTempPoints([]);
       }
@@ -966,16 +1049,15 @@ export const Canvas: React.FC<CanvasProps> = ({
     // ----------------- TOOL: PATH_OFFSET_LABEL -----------------
     if (activeTool === 'path_offset_label') {
       const pt = getOrCreatePoint(sx, sy, wx, wy);
-      const newAnnotation: PathAnnotation = {
-        id: `pa_off_${Date.now()}`,
-        type: 'point_offset_label',
+      // Đã chọn xong điểm — hiện hộp nhập nội dung nhãn ngay cạnh điểm đó, CHƯA tạo nhãn.
+      const s = worldToScreen(pt.x, pt.y, viewport);
+      setPendingPathAnnotation({
+        kind: 'point_offset_label',
         pointId: pt.id,
-        text: '$30^\\circ$',
-        angle: 30,
-        distancePt: 20,
-      };
-      onAddPathAnnotation(newAnnotation);
-      onSelectTool('select');
+        screenX: s.x,
+        screenY: s.y,
+      });
+      setPendingLabelText('');
       return;
     }
 
@@ -2482,7 +2564,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       );
     }
 
-    if ((activeTool === 'segment' || activeTool === 'path_segment_label') && tempPoints.length === 1) {
+    if (activeTool === 'segment' && tempPoints.length === 1) {
       const s1 = worldToScreen(tempPoints[0].x, tempPoints[0].y, viewport);
       return (
         <line
@@ -2493,6 +2575,23 @@ export const Canvas: React.FC<CanvasProps> = ({
           stroke={previewColor}
           strokeWidth={1.5}
           strokeDasharray="5 4"
+        />
+      );
+    }
+
+    // Nhãn đoạn thẳng (\path): chỉ tô sáng điểm A đã chọn, KHÔNG kéo đường ra theo chuột
+    // (tránh gây cảm giác đang vẽ một đoạn thẳng thật).
+    if (activeTool === 'path_segment_label' && tempPoints.length === 1) {
+      const s1 = worldToScreen(tempPoints[0].x, tempPoints[0].y, viewport);
+      return (
+        <circle
+          cx={s1.x}
+          cy={s1.y}
+          r={7}
+          fill="none"
+          stroke={previewColor}
+          strokeWidth={2}
+          strokeDasharray="3 2"
         />
       );
     }
@@ -3353,6 +3452,46 @@ export const Canvas: React.FC<CanvasProps> = ({
         >
           <MousePointer className="w-4 h-4" />
         </button>
+      )}
+
+      {/* Hộp nhập nội dung nhãn \path — hiện ra ngay sau khi đã chọn xong điểm/2 điểm */}
+      {pendingPathAnnotation && (
+        <div
+          className="absolute z-30 bg-white border border-[#2f5d99] rounded-md shadow-md p-2 flex items-center gap-1.5"
+          style={{
+            left: pendingPathAnnotation.screenX,
+            top: pendingPathAnnotation.screenY,
+            transform: 'translate(-50%, -140%)',
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <input
+            ref={pendingLabelInputRef}
+            type="text"
+            value={pendingLabelText}
+            onChange={(e) => setPendingLabelText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') confirmPendingPathAnnotation();
+              if (e.key === 'Escape') cancelPendingPathAnnotation();
+            }}
+            placeholder={pendingPathAnnotation.kind === 'segment_label' ? 'VD: $7\\,m$' : 'VD: $30^\\circ$'}
+            className="text-xs w-36 px-2 py-1.5 border border-[#dbe4ee] rounded outline-none focus:border-[#2f5d99]"
+          />
+          <button
+            onClick={confirmPendingPathAnnotation}
+            title="Xác nhận (Enter)"
+            className="w-7 h-7 shrink-0 rounded bg-[#2f5d99] hover:bg-[#254a7a] text-white flex items-center justify-center transition-colors"
+          >
+            <Check className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={cancelPendingPathAnnotation}
+            title="Hủy (Esc)"
+            className="w-7 h-7 shrink-0 rounded bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#5b6b82] flex items-center justify-center transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
 
       {/* Bottom-Left Tool Instruction Hint */}
