@@ -34,6 +34,8 @@ interface HeaderProps {
     pointCounter: number,
     bgImage: BackgroundImageState | null
   ) => void;
+  formulaMode: boolean;
+  onToggleFormulaMode: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -42,6 +44,8 @@ export const Header: React.FC<HeaderProps> = ({
   pointCounter,
   bgImage,
   onLoadDrawing,
+  formulaMode,
+  onToggleFormulaMode,
 }) => {
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const { user, loading, signInWithGoogle, signOut } = useAuth();
@@ -128,6 +132,16 @@ export const Header: React.FC<HeaderProps> = ({
             Sản phẩm được phát triển bởi Trần Quang Hùng. Phiên bản 1.0
           </span>
         </div>
+        <button
+          onClick={onToggleFormulaMode}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border transition-colors ${
+            formulaMode
+              ? 'bg-[#2f5d99] border-[#2f5d99] text-white'
+              : 'bg-white border-[#dbe4ee] text-[#5b6b82] hover:bg-[#f8fafc]'
+          }`}
+        >
+          {formulaMode ? '📐 Chế độ công thức' : '🖱️ Chế độ chuột'}
+        </button>
       </div>
 
       {/* Center/Right Actions: Save/Load & Shortcuts */}
