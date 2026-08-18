@@ -151,7 +151,7 @@ export default function App() {
   );
 
   // Multi-step tool configurations
-  const [globalLabelDistance, setGlobalLabelDistance] = useState<number>(8);
+  const [globalLabelDistance, setGlobalLabelDistance] = useState<number>(14);
 
   const handleSetGlobalLabelDistance = useCallback((value: number) => {
     setGlobalLabelDistance(value);
