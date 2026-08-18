@@ -323,6 +323,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <span className="font-mono text-xs font-bold leading-none w-4 text-center">∡</span>
               <span>Nhãn góc / lệch (1 điểm)</span>
             </button>
+
+            <button
+              id="tool-btn-right_angle_mark"
+              onClick={() => onSelectTool('right_angle_mark')}
+              title="Ký hiệu góc vuông (3 điểm): chọn điểm 1, đỉnh góc vuông, điểm 2"
+              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
+                activeTool === 'right_angle_mark'
+                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs ring-1 ring-[#2f5d99]/10'
+                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
+              }`}
+            >
+              <span className="font-mono text-xs font-bold leading-none w-4 text-center">⌐</span>
+              <span>Ký hiệu góc vuông (3 điểm)</span>
+            </button>
           </div>
         </div>
 
