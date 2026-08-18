@@ -1251,8 +1251,10 @@ export const Canvas: React.FC<CanvasProps> = ({
         const ptScreen = worldToScreen(pt.x, pt.y, viewport);
         const dx = sx - ptScreen.x;
         const dy = sy - ptScreen.y;
-        const angle = (Math.atan2(-dy, dx) * 180) / Math.PI; // đảo dấu dy vì màn hình Y hướng xuống
-        const distance = Math.max(4, Math.min(60, Math.hypot(dx, dy))); // giới hạn 4-60pt cho hợp lý
+        const rawAngle = (Math.atan2(-dy, dx) * 180) / Math.PI;
+        const angle = Math.round(rawAngle); // làm tròn độ, đủ mượt khi kéo, gọn khi xuất mã
+        const rawDistance = Math.max(4, Math.min(60, Math.hypot(dx, dy)));
+        const distance = Math.round(rawDistance / 2) * 2; // làm tròn về bội số 2pt gần nhất
         onUpdatePoint(draggingLabelPointId, { labelAngleDeg: angle, labelDistance: distance });
       }
       return;
