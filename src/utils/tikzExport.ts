@@ -101,7 +101,8 @@ function buildChainSegmentString(
   shape: GeoShape,
   reversed: boolean,
   pointsMap: Map<string, GeoPoint>,
-  rawCoord: (p: { x: number; y: number }) => string
+  rawCoord: (p: { x: number; y: number }) => string,
+  coordFor: (p: GeoPoint) => string
 ): string | null {
   if (shape.type === 'segment' || shape.type === 'parallel_line' || shape.type === 'perpendicular_line') {
     const id1 = shape.type === 'segment' ? shape.pointIds[0] : shape.throughPointId;
@@ -109,14 +110,14 @@ function buildChainSegmentString(
     const a = pointsMap.get(id1);
     const b = pointsMap.get(id2);
     if (!a || !b) return null;
-    return ` -- ${rawCoord(reversed ? a : b)}`;
+    return ` -- ${coordFor(reversed ? a : b)}`;
   }
 
   if (shape.type === 'polyline') {
     const pts = shape.pointIds.map((id) => pointsMap.get(id)).filter(Boolean) as GeoPoint[];
     if (pts.length < 2) return null;
     const ordered = reversed ? [...pts].reverse() : pts;
-    return ordered.slice(1).map((p) => ` -- ${rawCoord(p)}`).join('');
+    return ordered.slice(1).map((p) => ` -- ${coordFor(p)}`).join('');
   }
 
   if (shape.type === 'bezier') {
@@ -126,13 +127,13 @@ function buildChainSegmentString(
     if (!reversed) {
       for (let i = 0; i < shape.controls.length; i++) {
         const [cp1, cp2] = shape.controls[i];
-        s += ` .. controls ${rawCoord(cp1)} and ${rawCoord(cp2)} .. ${rawCoord(anchors[i + 1])}`;
+        s += ` .. controls ${rawCoord(cp1)} and ${rawCoord(cp2)} .. ${coordFor(anchors[i + 1])}`;
       }
     } else {
       for (let i = shape.controls.length - 1; i >= 0; i--) {
         const [cp1, cp2] = shape.controls[i];
         // đảo thứ tự 2 điểm điều khiển khi đi ngược chiều đoạn cong
-        s += ` .. controls ${rawCoord(cp2)} and ${rawCoord(cp1)} .. ${rawCoord(anchors[i])}`;
+        s += ` .. controls ${rawCoord(cp2)} and ${rawCoord(cp1)} .. ${coordFor(anchors[i])}`;
       }
     }
     return s;
@@ -164,7 +165,8 @@ function buildChainSegmentString(
 function buildFullSubpathString(
   shape: GeoShape,
   pointsMap: Map<string, GeoPoint>,
-  rawCoord: (p: { x: number; y: number }) => string
+  rawCoord: (p: { x: number; y: number }) => string,
+  coordFor: (p: GeoPoint) => string
 ): string | null {
   if (shape.type === 'segment' || shape.type === 'parallel_line' || shape.type === 'perpendicular_line') {
     const id1 = shape.type === 'segment' ? shape.pointIds[0] : shape.throughPointId;
@@ -172,14 +174,14 @@ function buildFullSubpathString(
     const a = pointsMap.get(id1);
     const b = pointsMap.get(id2);
     if (!a || !b) return null;
-    return `${rawCoord(a)} -- ${rawCoord(b)}`;
+    return `${coordFor(a)} -- ${coordFor(b)}`;
   }
 
   if (shape.type === 'polyline') {
     const pts = shape.pointIds.map((id) => pointsMap.get(id)).filter(Boolean) as GeoPoint[];
     if (pts.length < 2) return null;
-    let s = rawCoord(pts[0]);
-    for (let i = 1; i < pts.length; i++) s += ` -- ${rawCoord(pts[i])}`;
+    let s = coordFor(pts[0]);
+    for (let i = 1; i < pts.length; i++) s += ` -- ${coordFor(pts[i])}`;
     if (shape.isClosed) s += ' -- cycle';
     return s;
   }
@@ -187,10 +189,10 @@ function buildFullSubpathString(
   if (shape.type === 'bezier') {
     const anchors = shape.anchorIds.map((id) => pointsMap.get(id)).filter(Boolean) as GeoPoint[];
     if (anchors.length < 2 || shape.controls.length === 0) return null;
-    let s = rawCoord(anchors[0]);
+    let s = coordFor(anchors[0]);
     for (let i = 0; i < shape.controls.length; i++) {
       const [cp1, cp2] = shape.controls[i];
-      s += ` .. controls ${rawCoord(cp1)} and ${rawCoord(cp2)} .. ${rawCoord(anchors[i + 1])}`;
+      s += ` .. controls ${rawCoord(cp1)} and ${rawCoord(cp2)} .. ${coordFor(anchors[i + 1])}`;
     }
     if (shape.isClosed) s += ' -- cycle';
     return s;
@@ -205,13 +207,13 @@ function buildFullSubpathString(
     if (!circle) return null;
     const startA = (Math.atan2(p1.y - circle.center.y, p1.x - circle.center.x) * 180) / Math.PI;
     const endA = (Math.atan2(p3.y - circle.center.y, p3.x - circle.center.x) * 180) / Math.PI;
-    return `${rawCoord(p1)} arc [start angle=${formatNumber(startA)}, end angle=${formatNumber(endA)}, radius=${formatNumber(circle.radius)}cm]`;
+    return `${coordFor(p1)} arc [start angle=${formatNumber(startA)}, end angle=${formatNumber(endA)}, radius=${formatNumber(circle.radius)}cm]`;
   }
 
   if (shape.type === 'param_arc') {
     const startPt = pointsMap.get(shape.startPointId);
     if (!startPt) return null;
-    return `${rawCoord(startPt)} arc (${formatNumber(shape.startAngle)}:${formatNumber(shape.endAngle)}:${formatNumber(shape.radius)}cm)`;
+    return `${coordFor(startPt)} arc (${formatNumber(shape.startAngle)}:${formatNumber(shape.endAngle)}:${formatNumber(shape.radius)}cm)`;
   }
 
   return null;
@@ -236,6 +238,10 @@ export function generateTikZCodeWithLineMap(
   const rawCoord = (p: { x: number; y: number }): string =>
     `(${formatNumber(p.x)}, ${formatNumber(p.y)})`;
 
+  const coordFor = (p: GeoPoint): string => {
+    return p.hidden ? rawCoord(p) : `(${getTikZCoordName(p)})`;
+  };
+
   const lines: string[] = [];
 
   const lineOwnerShapeIds: string[][] = [];
@@ -258,6 +264,15 @@ export function generateTikZCodeWithLineMap(
     lines.push(`\\begin{tikzpicture}[scale=${options.scale}, >=stealth, line cap=round, line join=round]`);
   } else {
     lines.push(`\\begin{tikzpicture}[scale=${options.scale}, >=stealth, line cap=round, line join=round]`);
+  }
+
+  const visiblePoints = points.filter((p) => !p.hidden);
+  if (visiblePoints.length > 0) {
+    lines.push('');
+    lines.push('  % --- Toạ độ điểm có nhãn ---');
+    visiblePoints.forEach((p) => {
+      lines.push(`  \\coordinate (${getTikZCoordName(p)}) at (${formatNumber(p.x)}, ${formatNumber(p.y)});`);
+    });
   }
 
   // 1. Shapes drawing — toàn bộ dùng toạ độ số thô, không dùng tên điểm
@@ -289,6 +304,7 @@ export function generateTikZCodeWithLineMap(
 
   for (const groupShapes of mergeGroups.values()) {
     if (groupShapes.length < 2) continue;
+    if (groupShapes.every((s) => s.hidden)) continue;
     const first = groupShapes[0];
     const sameStyle = groupShapes.every(
       (s) =>
@@ -385,6 +401,7 @@ export function generateTikZCodeWithLineMap(
 
   for (const groupShapes of chainGroups.values()) {
     if (groupShapes.length < 2) continue;
+    if (groupShapes.every((s) => s.hidden)) continue;
     const first = groupShapes[0];
     const sameStyle = groupShapes.every(
       (s) =>
@@ -438,6 +455,7 @@ export function generateTikZCodeWithLineMap(
   if (shapes.length > 0) {
     for (const shape of shapes) {
       if (mergedShapeIds.has(shape.id)) continue;
+      if (shape.hidden) continue;
       const _shapeBeforeLen = shapeDrawLines.length;
       const styleOpts = getStyleOptions(shape.style);
       const optStr = styleOpts.length > 0 ? `[${styleOpts.join(', ')}]` : '';
@@ -447,7 +465,7 @@ export function generateTikZCodeWithLineMap(
           const p1 = pointsMap.get(shape.pointIds[0]);
           const p2 = pointsMap.get(shape.pointIds[1]);
           if (p1 && p2) {
-            shapeDrawLines.push(`  \\draw${optStr} ${rawCoord(p1)} -- ${rawCoord(p2)};`);
+            shapeDrawLines.push(`  \\draw${optStr} ${coordFor(p1)} -- ${coordFor(p2)};`);
           }
           break;
         }
@@ -455,7 +473,7 @@ export function generateTikZCodeWithLineMap(
         case 'polyline': {
           const pts = shape.pointIds.map((id) => pointsMap.get(id)).filter(Boolean) as GeoPoint[];
           if (pts.length >= 2) {
-            const coordPath = pts.map((p) => rawCoord(p)).join(' -- ');
+            const coordPath = pts.map((p) => coordFor(p)).join(' -- ');
             const cycleStr = shape.isClosed ? ' -- cycle' : '';
             shapeDrawLines.push(`  \\draw${optStr} ${coordPath}${cycleStr};`);
           }
@@ -467,7 +485,7 @@ export function generateTikZCodeWithLineMap(
           const radPt = pointsMap.get(shape.radiusPointId);
           if (center && radPt) {
             const r = dist(center, radPt);
-            shapeDrawLines.push(`  \\draw${optStr} ${rawCoord(center)} circle (${formatNumber(r)}cm);`);
+            shapeDrawLines.push(`  \\draw${optStr} ${coordFor(center)} circle (${formatNumber(r)}cm);`);
           }
           break;
         }
@@ -480,10 +498,10 @@ export function generateTikZCodeWithLineMap(
             const rx = Math.abs(rxPt.x - center.x) || dist(center, rxPt);
             const ry = Math.abs(ryPt.y - center.y) || dist(center, ryPt);
             const rotOpts = shape.rotation
-              ? [`rotate around={${formatNumber(shape.rotation)}:${rawCoord(center)}}`, ...styleOpts]
+              ? [`rotate around={${formatNumber(shape.rotation)}:${coordFor(center)}}`, ...styleOpts]
               : styleOpts;
             const ellipseOptStr = rotOpts.length > 0 ? `[${rotOpts.join(', ')}]` : '';
-            shapeDrawLines.push(`  \\draw${ellipseOptStr} ${rawCoord(center)} ellipse (${formatNumber(rx)}cm and ${formatNumber(ry)}cm);`);
+            shapeDrawLines.push(`  \\draw${ellipseOptStr} ${coordFor(center)} ellipse (${formatNumber(rx)}cm and ${formatNumber(ry)}cm);`);
           }
           break;
         }
@@ -499,7 +517,7 @@ export function generateTikZCodeWithLineMap(
               const rotOpts = [`rotate around={${formatNumber(shape.rotation)}:${rawCoord(pivot)}}`, ...styleOpts];
               rectOptStr = `[${rotOpts.join(', ')}]`;
             }
-            shapeDrawLines.push(`  \\draw${rectOptStr} ${rawCoord(p1)} rectangle ${rawCoord(p2)};`);
+            shapeDrawLines.push(`  \\draw${rectOptStr} ${coordFor(p1)} rectangle ${coordFor(p2)};`);
           }
           break;
         }
@@ -516,7 +534,7 @@ export function generateTikZCodeWithLineMap(
               allOpts.push(`rotate around={${formatNumber(shape.rotation)}:${rawCoord(pivot)}}`);
             }
             const combinedOptStr = `[${allOpts.join(', ')}]`;
-            shapeDrawLines.push(`  \\draw${combinedOptStr} ${rawCoord(p1)} rectangle ${rawCoord(p2)};`);
+            shapeDrawLines.push(`  \\draw${combinedOptStr} ${coordFor(p1)} rectangle ${coordFor(p2)};`);
           }
           break;
         }
@@ -528,7 +546,7 @@ export function generateTikZCodeWithLineMap(
             const r = dist(center, radPt);
             const baseAngle = (Math.atan2(radPt.y - center.y, radPt.x - center.x) * 180) / Math.PI;
             const endAngle = baseAngle + 180;
-            shapeDrawLines.push(`  \\draw${optStr} ${rawCoord(radPt)} arc [start angle=${formatNumber(baseAngle)}, end angle=${formatNumber(endAngle)}, radius=${formatNumber(r)}cm] -- cycle;`);
+            shapeDrawLines.push(`  \\draw${optStr} ${coordFor(radPt)} arc [start angle=${formatNumber(baseAngle)}, end angle=${formatNumber(endAngle)}, radius=${formatNumber(r)}cm] -- cycle;`);
           }
           break;
         }
@@ -543,9 +561,9 @@ export function generateTikZCodeWithLineMap(
             const endAngle = isFlipped ? 360 : 180;
             // Cộng dồn góc xoay người dùng nhập thêm vào góc nghiêng tự nhiên của trục cắt.
             const totalAngle = baseAngleDeg + (shape.rotation ?? 0);
-            const rotateOpt = `rotate around={${formatNumber(totalAngle)}:${rawCoord(center)}}`;
+            const rotateOpt = `rotate around={${formatNumber(totalAngle)}:${coordFor(center)}}`;
             const combinedOptStr = `[${[rotateOpt, ...styleOpts].join(', ')}]`;
-            shapeDrawLines.push(`  \\draw${combinedOptStr} ${rawCoord(rxPt)} arc [start angle=${startAngle}, end angle=${endAngle}, x radius=${formatNumber(rx)}cm, y radius=${formatNumber(ry)}cm] -- cycle;`);
+            shapeDrawLines.push(`  \\draw${combinedOptStr} ${coordFor(rxPt)} arc [start angle=${startAngle}, end angle=${endAngle}, x radius=${formatNumber(rx)}cm, y radius=${formatNumber(ry)}cm] -- cycle;`);
           }
           break;
         }
@@ -595,7 +613,7 @@ export function generateTikZCodeWithLineMap(
             if (circle) {
               const startA = (Math.atan2(p1.y - circle.center.y, p1.x - circle.center.x) * 180) / Math.PI;
               const endA = (Math.atan2(p3.y - circle.center.y, p3.x - circle.center.x) * 180) / Math.PI;
-              shapeDrawLines.push(`  \\draw${optStr} ${rawCoord(p1)} arc [start angle=${formatNumber(startA)}, end angle=${formatNumber(endA)}, radius=${formatNumber(circle.radius)}cm];`);
+              shapeDrawLines.push(`  \\draw${optStr} ${coordFor(p1)} arc [start angle=${formatNumber(startA)}, end angle=${formatNumber(endA)}, radius=${formatNumber(circle.radius)}cm];`);
             }
           }
           break;
@@ -605,7 +623,7 @@ export function generateTikZCodeWithLineMap(
           const startPt = pointsMap.get(shape.startPointId);
           if (startPt) {
             shapeDrawLines.push(
-              `  \\draw${optStr} ${rawCoord(startPt)} arc (${formatNumber(shape.startAngle)}:${formatNumber(shape.endAngle)}:${formatNumber(shape.radius)}cm);`
+              `  \\draw${optStr} ${coordFor(startPt)} arc (${formatNumber(shape.startAngle)}:${formatNumber(shape.endAngle)}:${formatNumber(shape.radius)}cm);`
             );
           }
           break;
@@ -614,11 +632,11 @@ export function generateTikZCodeWithLineMap(
         case 'bezier': {
           const anchors = shape.anchorIds.map((id) => pointsMap.get(id)).filter(Boolean) as GeoPoint[];
           if (anchors.length >= 2 && shape.controls.length > 0) {
-            let pathStr = rawCoord(anchors[0]);
+            let pathStr = coordFor(anchors[0]);
             for (let i = 0; i < shape.controls.length; i++) {
               const nextAnchor = anchors[(i + 1) % anchors.length];
               const [cp1, cp2] = shape.controls[i];
-              pathStr += ` .. controls ${rawCoord(cp1)} and ${rawCoord(cp2)} .. ${rawCoord(nextAnchor)}`;
+              pathStr += ` .. controls ${rawCoord(cp1)} and ${rawCoord(cp2)} .. ${coordFor(nextAnchor)}`;
             }
             if (shape.isClosed) {
               pathStr += ' -- cycle';
@@ -632,7 +650,7 @@ export function generateTikZCodeWithLineMap(
           const p1 = pointsMap.get(shape.throughPointId);
           const p2 = pointsMap.get(shape.endPointId);
           if (p1 && p2) {
-            shapeDrawLines.push(`  \\draw${optStr} ${rawCoord(p1)} -- ${rawCoord(p2)};`);
+            shapeDrawLines.push(`  \\draw${optStr} ${coordFor(p1)} -- ${coordFor(p2)};`);
           }
           break;
         }
@@ -641,7 +659,7 @@ export function generateTikZCodeWithLineMap(
           const p1 = pointsMap.get(shape.throughPointId);
           const p2 = pointsMap.get(shape.endPointId);
           if (p1 && p2) {
-            shapeDrawLines.push(`  \\draw${optStr} ${rawCoord(p1)} -- ${rawCoord(p2)};`);
+            shapeDrawLines.push(`  \\draw${optStr} ${coordFor(p1)} -- ${coordFor(p2)};`);
             if (shape.showRightAngleMark !== false) {
               const refShape = shapes.find((s) => s.id === shape.referenceShapeId);
               if (refShape && refShape.type === 'segment') {
@@ -676,6 +694,7 @@ export function generateTikZCodeWithLineMap(
     lines.push('  % --- Nhãn và điểm ---');
 
     for (const pt of points) {
+      if (pt.hidden) continue;
       const pos = pt.labelPos && pt.labelPos !== 'auto' ? pt.labelPos : 'above right';
 
       if (options.includePoints && pt.style?.pointStyle !== 'hidden') {
