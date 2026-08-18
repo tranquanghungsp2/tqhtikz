@@ -7,9 +7,11 @@ import {
   Save,
   FolderOpen,
   Trash2,
+  Clock,
 } from 'lucide-react';
 import { GeoPoint, GeoShape, BackgroundImageState } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { useProfile } from '../hooks/useProfile';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import {
   listMyDrawings,
@@ -41,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { status: approvalStatus, loadingProfile } = useProfile(user);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
   const [savedDrawings, setSavedDrawings] = useState<SavedDrawing[]>([]);
   const [currentDrawingId, setCurrentDrawingId] = useState<string | null>(null);
@@ -50,6 +53,10 @@ export const Header: React.FC<HeaderProps> = ({
   const openSaveMenu = async () => {
     if (!user) {
       await signInWithGoogle();
+      return;
+    }
+    if (approvalStatus !== 'approved') {
+      setShowSaveMenu((v) => !v);
       return;
     }
     setShowSaveMenu((v) => !v);
@@ -150,66 +157,81 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 </div>
 
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="Tên bản vẽ mới..."
-                    value={saveNameInput}
-                    onChange={(e) => setSaveNameInput(e.target.value)}
-                    className="flex-1 px-2 py-1 text-xs border border-[#dbe4ee] rounded focus:outline-none focus:border-[#2f5d99]"
-                  />
-                  <button
-                    onClick={handleSaveNew}
-                    disabled={busy || !saveNameInput.trim()}
-                    className="px-2 py-1 text-[11px] font-semibold text-white bg-[#2f5d99] hover:bg-[#254a7a] rounded disabled:opacity-50 flex items-center justify-center"
-                  >
-                    <Save className="w-3 h-3" />
-                  </button>
-                </div>
-
-                {currentDrawingId && (
-                  <button
-                    onClick={handleUpdateCurrent}
-                    disabled={busy}
-                    className="w-full text-[11px] font-medium text-[#2f5d99] bg-[#e4ecf7] hover:bg-[#d6e2f5] px-2 py-1.5 rounded disabled:opacity-50"
-                  >
-                    💾 Ghi đè bản đang mở
-                  </button>
-                )}
-
-                <div className="border-t border-[#f1f5f9] pt-1.5 max-h-56 overflow-y-auto space-y-0.5">
-                  {savedDrawings.length === 0 && (
-                    <p className="text-[11px] text-[#94a3b8] italic px-1">
-                      Chưa có bản vẽ nào được lưu.
-                    </p>
-                  )}
-                  {savedDrawings.map((d) => (
-                    <div
-                      key={d.id}
-                      className={`flex items-center justify-between gap-1 px-2 py-1.5 rounded hover:bg-[#f8fafc] group ${
-                        currentDrawingId === d.id ? 'bg-[#f0f4fa]' : ''
-                      }`}
-                    >
+                {loadingProfile ? (
+                  <p className="text-[11px] text-[#94a3b8] italic px-1 py-2">Đang kiểm tra quyền truy cập...</p>
+                ) : approvalStatus !== 'approved' ? (
+                  <div className="flex items-start gap-2 p-2.5 bg-[#fef3c7] border border-[#f59e0b]/40 rounded-md text-[11px] text-[#92400e] leading-relaxed">
+                    <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>
+                      {approvalStatus === 'rejected'
+                        ? 'Tài khoản của bạn chưa được cấp quyền sử dụng tính năng Lưu/Tải hình.'
+                        : 'Tài khoản đang chờ được duyệt để dùng tính năng Lưu/Tải hình. Vui lòng liên hệ quản trị viên.'}
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        placeholder="Tên bản vẽ mới..."
+                        value={saveNameInput}
+                        onChange={(e) => setSaveNameInput(e.target.value)}
+                        className="flex-1 px-2 py-1 text-xs border border-[#dbe4ee] rounded focus:outline-none focus:border-[#2f5d99]"
+                      />
                       <button
-                        onClick={() => handleLoad(d)}
-                        className="text-left flex-1 min-w-0"
+                        onClick={handleSaveNew}
+                        disabled={busy || !saveNameInput.trim()}
+                        className="px-2 py-1 text-[11px] font-semibold text-white bg-[#2f5d99] hover:bg-[#254a7a] rounded disabled:opacity-50 flex items-center justify-center"
                       >
-                        <div className="text-xs font-medium text-[#16233a] truncate">
-                          {d.name}
-                        </div>
-                        <div className="text-[10px] text-[#94a3b8]">
-                          {new Date(d.updated_at).toLocaleString('vi-VN')}
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(d.id)}
-                        className="opacity-0 group-hover:opacity-100 text-[#b91c1c] hover:bg-[#fee2e2] p-1 rounded transition-opacity shrink-0"
-                      >
-                        <Trash2 className="w-3 h-3" />
+                        <Save className="w-3 h-3" />
                       </button>
                     </div>
-                  ))}
-                </div>
+
+                    {currentDrawingId && (
+                      <button
+                        onClick={handleUpdateCurrent}
+                        disabled={busy}
+                        className="w-full text-[11px] font-medium text-[#2f5d99] bg-[#e4ecf7] hover:bg-[#d6e2f5] px-2 py-1.5 rounded disabled:opacity-50"
+                      >
+                        💾 Ghi đè bản đang mở
+                      </button>
+                    )}
+
+                    <div className="border-t border-[#f1f5f9] pt-1.5 max-h-56 overflow-y-auto space-y-0.5">
+                      {savedDrawings.length === 0 && (
+                        <p className="text-[11px] text-[#94a3b8] italic px-1">
+                          Chưa có bản vẽ nào được lưu.
+                        </p>
+                      )}
+                      {savedDrawings.map((d) => (
+                        <div
+                          key={d.id}
+                          className={`flex items-center justify-between gap-1 px-2 py-1.5 rounded hover:bg-[#f8fafc] group ${
+                            currentDrawingId === d.id ? 'bg-[#f0f4fa]' : ''
+                          }`}
+                        >
+                          <button
+                            onClick={() => handleLoad(d)}
+                            className="text-left flex-1 min-w-0"
+                          >
+                            <div className="text-xs font-medium text-[#16233a] truncate">
+                              {d.name}
+                            </div>
+                            <div className="text-[10px] text-[#94a3b8]">
+                              {new Date(d.updated_at).toLocaleString('vi-VN')}
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(d.id)}
+                            className="opacity-0 group-hover:opacity-100 text-[#b91c1c] hover:bg-[#fee2e2] p-1 rounded transition-opacity shrink-0"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
