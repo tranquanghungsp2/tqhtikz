@@ -10,6 +10,11 @@ interface FormulaPanelProps {
   groups: FormulaPathGroup[];
   onUpdateGroups: (groups: FormulaPathGroup[]) => void;
   evalResult: FormulaEvalResult;
+  focusedPointId: string | null;
+  onFocusPoint: (id: string | null) => void;
+  pickingTemplateKind: 'reflect' | 'ratio' | 'projection' | 'rotate' | 'intersection' | null;
+  onSetPickingTemplateKind: (kind: 'reflect' | 'ratio' | 'projection' | 'rotate' | 'intersection' | null) => void;
+  pickedPointNames: string[];
 }
 
 export const FormulaPanel: React.FC<FormulaPanelProps> = ({
@@ -19,10 +24,14 @@ export const FormulaPanel: React.FC<FormulaPanelProps> = ({
   onUpdateVariables,
   groups,
   evalResult,
+  focusedPointId,
+  onFocusPoint,
+  pickingTemplateKind,
+  onSetPickingTemplateKind,
+  pickedPointNames,
 }) => {
   const errorMap = new Map(evalResult.errors.map((e) => [e.pointName, e.message]));
 
-  const [focusedPointId, setFocusedPointId] = React.useState<string | null>(null);
   const inputRefs = React.useRef<Map<string, HTMLInputElement>>(new Map());
 
   const updatePoint = (id: string, patch: Partial<FormulaPoint>) => {
@@ -58,17 +67,45 @@ export const FormulaPanel: React.FC<FormulaPanelProps> = ({
     onUpdateVariables([...variables, { name, value: 1, min: 0, max: 10 }]);
   };
 
-  const insertTemplate = (template: string) => {
-    if (!focusedPointId) return;
+  const SIMPLE_TEMPLATE_DEFS = {
+    freeCoord: {
+      label: '(x,y)',
+      title: 'Toạ độ tự do',
+      fields: [
+        { key: 'x', label: 'x', placeholder: '0' },
+        { key: 'y', label: 'y', placeholder: '0' },
+      ],
+    },
+    polar: {
+      label: '∠:r',
+      title: 'Toạ độ cực (góc:bán kính), tính từ gốc (0,0)',
+      fields: [
+        { key: 'angle', label: 'Góc (độ)', placeholder: '90' },
+        { key: 'radius', label: 'Bán kính', placeholder: '\\r' },
+      ],
+    },
+  };
+
+  const buildSimpleFormula = (kind: 'freeCoord' | 'polar', f: Record<string, string>): string => {
+    if (kind === 'freeCoord') return `(${f.x || '0'},${f.y || '0'})`;
+    return `(${f.angle || '0'}:${f.radius || '1'})`;
+  };
+
+  const [activeSimpleKind, setActiveSimpleKind] = React.useState<'freeCoord' | 'polar' | null>(null);
+  const [simpleFields, setSimpleFields] = React.useState<Record<string, string>>({});
+
+  const insertSimpleFormula = () => {
+    if (!activeSimpleKind || !focusedPointId) return;
+    const template = buildSimpleFormula(activeSimpleKind, simpleFields);
     const input = inputRefs.current.get(focusedPointId);
     const point = points.find((p) => p.id === focusedPointId);
     if (!input || !point) return;
-
     const start = input.selectionStart ?? point.formula.length;
     const end = input.selectionEnd ?? point.formula.length;
     const newFormula = point.formula.slice(0, start) + template + point.formula.slice(end);
     updatePoint(point.id, { formula: newFormula });
-
+    setActiveSimpleKind(null);
+    setSimpleFields({});
     requestAnimationFrame(() => {
       input.focus();
       const newPos = start + template.length;
@@ -76,15 +113,60 @@ export const FormulaPanel: React.FC<FormulaPanelProps> = ({
     });
   };
 
-  const FORMULA_TEMPLATES = [
-    { label: '(x,y)', title: 'Toạ độ tự do', template: '(0,0)' },
-    { label: '∠:r', title: 'Toạ độ cực (góc:bán kính)', template: '(90:5)' },
-    { label: '2P−Q', title: 'Đối xứng tâm (P đối xứng qua Q)', template: '2*(A)-(B)' },
-    { label: 'P!t!Q', title: 'Điểm chia đoạn theo tỉ lệ t (0..1) hoặc khoảng cách (vd 3cm)', template: '(A)!0.5!(B)' },
-    { label: '⊥ chiếu', title: 'Chiếu vuông góc: chiếu B lên đường thẳng qua A và C', template: '(A)!(B)!(C)' },
-    { label: '↻ quay', title: 'Quay quanh A theo hướng B, khoảng cách và góc quay', template: '(A)!3cm!60:(B)' },
-    { label: '∩', title: 'Giao điểm 2 đường thẳng', template: 'intersection of A--B and C--D' },
+  const POINT_BASED_TEMPLATES: Array<{
+    kind: 'reflect' | 'ratio' | 'projection' | 'rotate' | 'intersection';
+    label: string;
+    title: string;
+    pointsNeeded: number;
+    pointLabels: string[];
+    numericFields: Array<{ key: string; label: string; placeholder: string }>;
+  }> = [
+    {
+      kind: 'reflect',
+      label: '2P−Q',
+      title: 'Đối xứng tâm — bấm Điểm nguồn rồi Tâm đối xứng',
+      pointsNeeded: 2,
+      pointLabels: ['Điểm nguồn', 'Tâm đối xứng'],
+      numericFields: [],
+    },
+    {
+      kind: 'ratio',
+      label: 'P!t!Q',
+      title: 'Chia đoạn theo tỉ lệ — bấm điểm P rồi điểm Q, sau đó nhập tỉ lệ',
+      pointsNeeded: 2,
+      pointLabels: ['Điểm P (đầu)', 'Điểm Q (cuối)'],
+      numericFields: [{ key: 't', label: 'Tỉ lệ / khoảng cách', placeholder: '0.5' }],
+    },
+    {
+      kind: 'projection',
+      label: '⊥ chiếu',
+      title: 'Chiếu vuông góc — bấm 2 điểm trên đường thẳng, rồi điểm cần chiếu',
+      pointsNeeded: 3,
+      pointLabels: ['Trên đường (1)', 'Điểm cần chiếu', 'Trên đường (2)'],
+      numericFields: [],
+    },
+    {
+      kind: 'rotate',
+      label: '↻ quay',
+      title: 'Quay — bấm điểm Gốc rồi điểm Hướng, sau đó nhập khoảng cách và góc',
+      pointsNeeded: 2,
+      pointLabels: ['Gốc', 'Hướng tới'],
+      numericFields: [
+        { key: 'dist', label: 'Khoảng cách / tỉ lệ', placeholder: '3cm' },
+        { key: 'angle', label: 'Góc quay (độ)', placeholder: '60' },
+      ],
+    },
+    {
+      kind: 'intersection',
+      label: '∩',
+      title: 'Giao điểm 2 đường — bấm lần lượt 4 điểm: 2 điểm đường 1, 2 điểm đường 2',
+      pointsNeeded: 4,
+      pointLabels: ['Đường 1 - A', 'Đường 1 - B', 'Đường 2 - C', 'Đường 2 - D'],
+      numericFields: [],
+    },
   ];
+
+  const activePointTemplate = POINT_BASED_TEMPLATES.find((t) => t.kind === pickingTemplateKind) || null;
 
   return (
     <aside className="w-[420px] flex-none bg-white border-r border-[#dbe4ee] flex flex-col overflow-hidden">
@@ -149,26 +231,97 @@ export const FormulaPanel: React.FC<FormulaPanelProps> = ({
       </div>
 
       {/* Quick insert templates */}
-      <div className="border-b border-[#dbe4ee] p-3 space-y-1.5">
+      <div className="border-b border-[#dbe4ee] p-3 space-y-2">
         <p className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-widest">
           Chèn nhanh công thức
         </p>
         <div className="flex flex-wrap gap-1">
-          {FORMULA_TEMPLATES.map((t) => (
+          {(Object.keys(SIMPLE_TEMPLATE_DEFS) as Array<'freeCoord' | 'polar'>).map((kind) => (
             <button
-              key={t.label}
+              key={kind}
               type="button"
-              onClick={() => insertTemplate(t.template)}
-              title={`${t.title}\nMẫu: ${t.template}`}
+              onClick={() => {
+                setActiveSimpleKind(activeSimpleKind === kind ? null : kind);
+                setSimpleFields({});
+              }}
+              title={SIMPLE_TEMPLATE_DEFS[kind].title}
               disabled={!focusedPointId}
-              className="text-[11px] font-mono-code px-2 py-1 rounded border border-[#dbe4ee] bg-white hover:bg-[#e4ecf7] hover:border-[#2f5d99] hover:text-[#2f5d99] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className={`text-[11px] font-mono-code px-2 py-1 rounded border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                activeSimpleKind === kind
+                  ? 'bg-[#2f5d99] border-[#2f5d99] text-white'
+                  : 'bg-white border-[#dbe4ee] hover:bg-[#e4ecf7] hover:border-[#2f5d99] hover:text-[#2f5d99]'
+              }`}
+            >
+              {SIMPLE_TEMPLATE_DEFS[kind].label}
+            </button>
+          ))}
+          {POINT_BASED_TEMPLATES.map((t) => (
+            <button
+              key={t.kind}
+              type="button"
+              onClick={() => onSetPickingTemplateKind(pickingTemplateKind === t.kind ? null : t.kind)}
+              title={t.title}
+              disabled={!focusedPointId}
+              className={`text-[11px] font-mono-code px-2 py-1 rounded border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                pickingTemplateKind === t.kind
+                  ? 'bg-[#059669] border-[#059669] text-white'
+                  : 'bg-white border-[#dbe4ee] hover:bg-[#e4ecf7] hover:border-[#2f5d99] hover:text-[#2f5d99]'
+              }`}
             >
               {t.label}
             </button>
           ))}
         </div>
+
         {!focusedPointId && (
-          <p className="text-[10px] text-[#94a3b8] italic">Bấm vào 1 ô công thức bên dưới trước, rồi bấm nút để chèn.</p>
+          <p className="text-[10px] text-[#94a3b8] italic">Bấm vào 1 ô công thức bên dưới trước, rồi chọn loại công thức.</p>
+        )}
+
+        {activeSimpleKind && focusedPointId && (
+          <div className="bg-[#f8fafc] border border-[#dbe4ee] rounded-md p-2.5 space-y-2">
+            {SIMPLE_TEMPLATE_DEFS[activeSimpleKind].fields.map((field) => (
+              <div key={field.key} className="flex items-center gap-2">
+                <label className="text-[11px] text-[#5b6b82] w-20 shrink-0">{field.label}</label>
+                <input
+                  type="text"
+                  value={simpleFields[field.key] || ''}
+                  onChange={(e) => setSimpleFields((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  placeholder={field.placeholder}
+                  className="flex-1 text-xs font-mono-code border border-[#dbe4ee] rounded px-1.5 py-1"
+                />
+              </div>
+            ))}
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[10.5px] font-mono-code text-[#5b6b82]">
+                {buildSimpleFormula(activeSimpleKind, simpleFields)}
+              </span>
+              <button
+                onClick={insertSimpleFormula}
+                className="text-[11px] font-semibold text-white bg-[#2f5d99] hover:bg-[#254a7a] px-3 py-1 rounded"
+              >
+                Chèn
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activePointTemplate && (
+          <div className="bg-[#ecfdf5] border border-[#059669]/40 rounded-md p-2.5 text-[11px] text-[#065f46] space-y-1">
+            <p className="font-semibold">{activePointTemplate.title}</p>
+            <p>
+              Đã chọn {pickedPointNames.length}/{activePointTemplate.pointsNeeded} điểm trên canvas:{' '}
+              {pickedPointNames.length > 0 ? pickedPointNames.join(' → ') : '(chưa chọn)'}
+            </p>
+            <p className="italic text-[#059669]">
+              Tiếp theo bấm điểm: {activePointTemplate.pointLabels[pickedPointNames.length] ?? '—'}
+            </p>
+            <button
+              onClick={() => onSetPickingTemplateKind(null)}
+              className="text-[10.5px] text-[#5b6b82] hover:underline"
+            >
+              Huỷ chọn
+            </button>
+          </div>
         )}
       </div>
 
@@ -205,7 +358,7 @@ export const FormulaPanel: React.FC<FormulaPanelProps> = ({
                             }}
                             value={p.formula}
                             onChange={(e) => updatePoint(p.id, { formula: e.target.value })}
-                            onFocus={() => setFocusedPointId(p.id)}
+                            onFocus={() => onFocusPoint(p.id)}
                             className={`flex-1 text-xs font-mono-code border rounded px-2 py-1 ${
                               err ? 'border-[#b91c1c] bg-[#fef2f2]' : 'border-[#dbe4ee]'
                             }`}
