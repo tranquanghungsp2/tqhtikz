@@ -44,10 +44,6 @@ export const FormulaPanel: React.FC<FormulaPanelProps> = ({
     ]);
   };
 
-  const updateVariable = (name: string, patch: Partial<FormulaVariable>) => {
-    onUpdateVariables(variables.map((v) => (v.name === name ? { ...v, ...patch } : v)));
-  };
-
   const addVariable = () => {
     const usedNames = new Set(variables.map((v) => v.name));
     let n = 1;
@@ -69,24 +65,54 @@ export const FormulaPanel: React.FC<FormulaPanelProps> = ({
             <Plus className="w-3 h-3" /> Thêm biến
           </button>
         </div>
-        {variables.map((v) => (
-          <div key={v.name} className="flex items-center gap-2">
-            <span className="text-xs font-mono-code text-[#16233a] w-8">\{v.name}</span>
+        {variables.map((v, idx) => (
+          <div key={idx} className="flex items-center gap-1.5">
+            <span className="text-xs font-mono-code text-[#5b6b82]">\</span>
+            <input
+              type="text"
+              value={v.name}
+              onChange={(e) => {
+                const newName = e.target.value.replace(/[^a-zA-Z]/g, ''); // chỉ cho chữ cái, khớp cú pháp \tenBien của TikZ
+                const isDuplicate = variables.some((other, i) => i !== idx && other.name === newName);
+                if (isDuplicate) return; // bỏ qua nếu trùng tên với biến khác
+                const next = [...variables];
+                next[idx] = { ...next[idx], name: newName };
+                onUpdateVariables(next);
+              }}
+              className="w-14 text-xs font-mono-code font-semibold border border-[#dbe4ee] rounded px-1 py-1"
+              placeholder="tên"
+              title="Đổi tên biến — LƯU Ý: không tự sửa các công thức đang dùng tên cũ, cần tự cập nhật tay"
+            />
             <input
               type="range"
               min={v.min ?? 0}
               max={v.max ?? 10}
               step={0.1}
               value={v.value}
-              onChange={(e) => updateVariable(v.name, { value: Number(e.target.value) })}
+              onChange={(e) => {
+                const next = [...variables];
+                next[idx] = { ...next[idx], value: Number(e.target.value) };
+                onUpdateVariables(next);
+              }}
               className="flex-1 h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
             />
             <input
               type="number"
               value={v.value}
-              onChange={(e) => updateVariable(v.name, { value: Number(e.target.value) })}
+              onChange={(e) => {
+                const next = [...variables];
+                next[idx] = { ...next[idx], value: Number(e.target.value) };
+                onUpdateVariables(next);
+              }}
               className="w-16 text-xs border border-[#dbe4ee] rounded px-1.5 py-0.5"
             />
+            <button
+              onClick={() => onUpdateVariables(variables.filter((_, i) => i !== idx))}
+              className="text-[#b91c1c] hover:bg-[#fee2e2] p-1 rounded shrink-0"
+              title="Xoá biến"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           </div>
         ))}
       </div>
