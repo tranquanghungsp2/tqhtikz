@@ -35,15 +35,15 @@ export default function App() {
       { id: '6', name: 'E', formula: '($(A)!(B)!(C)$)', groupId: '1' },
       { id: '7', name: 'F', formula: '($(A)!(C)!(B)$)', groupId: '1' },
       { id: '8', name: 'H', formula: 'intersection of A--D and C--F', groupId: '1' },
-      { id: '9', name: 'O1', formula: '($(O)!0.5!(H)$)', groupId: '1' },
-      { id: '10', name: 'M', formula: '($(B)!0.5!(C)$)', groupId: '1' },
-      { id: '11', name: 'P', formula: '($(A)!0.5!(C)$)', groupId: '1' },
-      { id: '12', name: 'N', formula: '($(A)!0.5!(B)$)', groupId: '1' },
-      { id: '13', name: 'K', formula: '($(H)!0.5!(A)$)', groupId: '1' },
-      { id: '14', name: 'Q', formula: '($(H)!0.5!(B)$)', groupId: '1' },
-      { id: '15', name: 'X', formula: '($(B)!0.5!(H)$)', groupId: '1' },
-      { id: '16', name: 'Y', formula: '($(C)!0.5!(H)$)', groupId: '1' },
-      { id: '17', name: 'G', formula: '($(A)!0.66667!(M)$)', groupId: '1' },
+      { id: '14', name: 'Q', formula: '($2*(O)-(A)$)', groupId: '1' },
+      { id: '9', name: 'O1', formula: '($(H)!(O)!(Q)$)', groupId: '1' },
+      { id: '13', name: 'K', formula: '($2*(O1)-(Q)$)', groupId: '1' },
+      { id: '10', name: 'M', formula: '($(A)!0.5!(H)$)', groupId: '1' },
+      { id: '11', name: 'P', formula: '($(B)!0.5!(C)$)', groupId: '1' },
+      { id: '12', name: 'N', formula: '($(H)!0.5!(K)$)', groupId: '1' },
+      { id: '15', name: 'X', formula: '($(M)!0.5!(P)$)', groupId: '1' },
+      { id: '16', name: 'Y', formula: '($2*(X)-(D)$)', groupId: '1' },
+      { id: '17', name: 'G', formula: '($2*(Y)!(X)!(H)-(Y)$)', groupId: '1' },
       { id: '18', name: 'mHD', formula: '($(H)!0.5!(D)$)', groupId: '1' },
     ];
 
@@ -63,8 +63,13 @@ export default function App() {
       const ptA = result.points.get('A');
       const ptB = result.points.get('B');
       const ptC = result.points.get('C');
+      const ptM = result.points.get('M');
+      const ptH = result.points.get('H');
+      const ptP = result.points.get('P');
+      const ptX = result.points.get('X');
+      const ptQ = result.points.get('Q');
 
-      if (ptO && ptA && ptB && ptC) {
+      if (ptO && ptA && ptB && ptC && ptM && ptH && ptP && ptX && ptQ) {
         const distOA = dist(ptO, ptA);
         const distOB = dist(ptO, ptB);
         const distOC = dist(ptO, ptC);
@@ -74,6 +79,22 @@ export default function App() {
         console.log(`O-A: ${distOA.toFixed(4)} (Xấp xỉ 5: ${Math.abs(distOA - 5) < 1e-3 ? 'ĐÚNG' : 'SAI'})`);
         console.log(`O-B: ${distOB.toFixed(4)} (Xấp xỉ 5: ${Math.abs(distOB - 5) < 1e-3 ? 'ĐÚNG' : 'SAI'})`);
         console.log(`O-C: ${distOC.toFixed(4)} (Xấp xỉ 5: ${Math.abs(distOC - 5) < 1e-3 ? 'ĐÚNG' : 'SAI'})`);
+
+        const midAH = { x: (ptA.x + ptH.x) / 2, y: (ptA.y + ptH.y) / 2 };
+        const distM_AH = dist(ptM, midAH);
+        console.log(`M có là trung điểm A-H: ${distM_AH.toFixed(4)} (Xấp xỉ 0: ${distM_AH < 1e-3 ? 'ĐÚNG' : 'SAI'})`);
+
+        const midBC = { x: (ptB.x + ptC.x) / 2, y: (ptB.y + ptC.y) / 2 };
+        const distP_BC = dist(ptP, midBC);
+        console.log(`P có là trung điểm B-C: ${distP_BC.toFixed(4)} (Xấp xỉ 0: ${distP_BC < 1e-3 ? 'ĐÚNG' : 'SAI'})`);
+
+        const midMP = { x: (ptM.x + ptP.x) / 2, y: (ptM.y + ptP.y) / 2 };
+        const distX_MP = dist(ptX, midMP);
+        console.log(`X có là trung điểm M-P: ${distX_MP.toFixed(4)} (Xấp xỉ 0: ${distX_MP < 1e-3 ? 'ĐÚNG' : 'SAI'})`);
+
+        const symA_O = { x: 2 * ptO.x - ptA.x, y: 2 * ptO.y - ptA.y };
+        const distQ_sym = dist(ptQ, symA_O);
+        console.log(`Q có đối xứng A qua O: ${distQ_sym.toFixed(4)} (Xấp xỉ 0: ${distQ_sym < 1e-3 ? 'ĐÚNG' : 'SAI'})`);
         console.log('--------------------');
       }
     }
