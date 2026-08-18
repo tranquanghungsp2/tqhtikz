@@ -180,6 +180,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <MousePointer className="w-4 h-4 text-[#2f5d99]" />
             <span>Con trỏ chọn</span>
           </button>
+
+          <button
+            id="tool-btn-toggle_visibility"
+            onClick={() => onSelectTool('toggle_visibility')}
+            title="Bấm vào 1 điểm hoặc hình trên canvas để ẩn/hiện nó (ẩn = không xuất mã TikZ, vẫn mờ trên canvas)"
+            className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left mt-1 ${
+              activeTool === 'toggle_visibility'
+                ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs ring-1 ring-[#2f5d99]/20'
+                : 'text-[#16233a] hover:bg-[#f1f5f9]'
+            }`}
+          >
+            <span className="w-4 h-4 flex items-center justify-center shrink-0">👁️</span>
+            <span>Ẩn/Hiện đối tượng</span>
+          </button>
         </div>
 
         {/* Group 2: Điểm & đường */}
