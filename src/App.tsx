@@ -28,8 +28,8 @@ export default function App() {
 
     const testPoints: FormulaPoint[] = [
       { id: '1', name: 'O', formula: '(0,0)', groupId: '1' },
-      { id: '2', name: 'A', formula: '(90:\\r)', groupId: '1' },
-      { id: '3', name: 'B', formula: '(-130:\\r)', groupId: '1' },
+      { id: '2', name: 'A', formula: '(108:\\r)', groupId: '1' },
+      { id: '3', name: 'B', formula: '(-150:\\r)', groupId: '1' },
       { id: '4', name: 'C', formula: '(-30:\\r)', groupId: '1' },
       { id: '5', name: 'D', formula: '($(B)!(A)!(C)$)', groupId: '1' },
       { id: '6', name: 'E', formula: '($(A)!(B)!(C)$)', groupId: '1' },
