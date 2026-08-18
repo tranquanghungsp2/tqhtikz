@@ -8,10 +8,12 @@ import {
   FolderOpen,
   Trash2,
   Clock,
+  ShieldCheck,
 } from 'lucide-react';
 import { GeoPoint, GeoShape, BackgroundImageState } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
+import { AdminPanel } from './AdminPanel';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import {
   listMyDrawings,
@@ -43,7 +45,8 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const { user, loading, signInWithGoogle, signOut } = useAuth();
-  const { status: approvalStatus, loadingProfile } = useProfile(user);
+  const { status: approvalStatus, isAdmin, loadingProfile } = useProfile(user);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
   const [savedDrawings, setSavedDrawings] = useState<SavedDrawing[]>([]);
   const [currentDrawingId, setCurrentDrawingId] = useState<string | null>(null);
@@ -129,6 +132,16 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Center/Right Actions: Save/Load & Shortcuts */}
       <div className="flex items-center gap-2">
+        {isAdmin && (
+          <button
+            onClick={() => setShowAdminPanel(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-[#e4ecf7] hover:bg-[#d6e2f5] text-[#2f5d99] border border-[#2f5d99]/30 rounded-md transition-colors shadow-2xs"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Quản lý người dùng</span>
+          </button>
+        )}
+
         {/* Lưu / Tải hình vẽ */}
         {isSupabaseConfigured && (
           <div className="relative">
@@ -316,6 +329,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       )}
+      {showAdminPanel && <AdminPanel onClose={() => setShowAdminPanel(false)} />}
     </header>
   );
 };
