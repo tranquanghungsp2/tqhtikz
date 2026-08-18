@@ -23,7 +23,9 @@ export type ToolType =
   | 'perpendicular'
   | 'move_background'
   | 'eyedropper'
-  | 'toggle_visibility';
+  | 'toggle_visibility'
+  | 'path_segment_label'
+  | 'path_offset_label';
 
 export type LabelPosition =
   | 'auto'
@@ -287,6 +289,7 @@ export interface HistoryState {
   points: GeoPoint[];
   shapes: GeoShape[];
   pointCounter: number;
+  pathAnnotations?: PathAnnotation[];
 }
 
 export interface AppSettings {
@@ -304,4 +307,24 @@ export interface TikZExportOptions {
   includePoints: boolean;
   scale: number;
   useColorDefinitions: boolean;
+  pathAnnotations?: PathAnnotation[];
 }
+
+export type PathAnnotation =
+  | {
+      id: string;
+      type: 'segment_label';
+      point1Id: string;
+      point2Id: string;
+      text: string;           // Ví dụ: $7\,m$ hoặc Mặt đê
+      pos?: number;           // Vị trí (mặc định 0.5)
+      positionOption?: string;// above, below, left, right, above left, ...
+    }
+  | {
+      id: string;
+      type: 'point_offset_label';
+      pointId: string;
+      text: string;           // Ví dụ: $\alpha^\circ$ hoặc $30^\circ$
+      angle: number;          // Góc độ (độ)
+      distancePt: number;     // Khoảng cách (pt)
+    };
