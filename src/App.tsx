@@ -1036,6 +1036,7 @@ export default function App() {
               }}
               onAddPoint={handleAddPoint}
               onUpdatePointCoord={handleUpdatePointCoord}
+              onUpdatePoint={handleUpdatePoint}
               onAddShape={handleAddShape}
               onUpdateShape={handleUpdateShape}
               nextPointLabel={nextPointLabel}
