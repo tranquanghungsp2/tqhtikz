@@ -96,6 +96,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   const [activeTab, setActiveTab] = useState<'properties' | 'tikz'>('properties');
   const [copied, setCopied] = useState(false);
   const [copiedLineIdx, setCopiedLineIdx] = useState<number | null>(null);
+  const [lastClickedLine, setLastClickedLine] = useState<number | null>(null);
+  const [copiedRange, setCopiedRange] = useState<{ start: number; end: number } | null>(null);
 
   const { code: tikzCode, shapeToLines } = generateTikZCodeWithLineMap(points, shapes, tikzOptions);
   const selectedShapeId = selectedShape?.id;
@@ -113,6 +115,29 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [selectedShapeId]);
+
+  const handleCopyLineOrBlock = async (idx: number, e: React.MouseEvent) => {
+    const linesArray = tikzCode.split('\n');
+
+    if (e.shiftKey && lastClickedLine !== null) {
+      // Khi giữ Shift + Click: Copy toàn bộ khối từ lastClickedLine đến idx
+      const start = Math.min(lastClickedLine, idx);
+      const end = Math.max(lastClickedLine, idx);
+      const blockText = linesArray.slice(start, end + 1).join('\n');
+
+      await navigator.clipboard.writeText(blockText);
+      setCopiedRange({ start, end });
+      setCopiedLineIdx(null);
+      setTimeout(() => setCopiedRange(null), 1500);
+    } else {
+      // Click bình thường: Copy 1 dòng và đặt làm mốc đầu khối
+      await navigator.clipboard.writeText(linesArray[idx] || '');
+      setLastClickedLine(idx);
+      setCopiedLineIdx(idx);
+      setCopiedRange(null);
+      setTimeout(() => setCopiedLineIdx((cur) => (cur === idx ? null : cur)), 1200);
+    }
+  };
 
   const handleCopyCode = async () => {
     try {
@@ -791,9 +816,13 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 </button>
               </div>
 
-              <div className="flex-1 min-h-[220px] bg-[#17233a] rounded-lg overflow-auto border border-[#1e293b] shadow-inner">
+              <div className="flex-1 min-h-[220px] bg-[#17233a] rounded-lg overflow-auto border border-[#1e293b] shadow-inner select-text">
                 {tikzCode.split('\n').map((line, idx) => {
                   const isHighlighted = highlightedLines.has(idx);
+                  const isInCopiedRange =
+                    copiedRange !== null && idx >= copiedRange.start && idx <= copiedRange.end;
+                  const isAnchor = lastClickedLine === idx && !copiedRange;
+
                   return (
                     <div
                       key={idx}
@@ -801,30 +830,53 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                         if (el) tikzLineRefs.current.set(idx, el);
                         else tikzLineRefs.current.delete(idx);
                       }}
-                      className={`group flex items-center justify-between px-4 py-0.5 transition-colors ${
-                        isHighlighted
+                      onClick={(e) => {
+                        // Nếu giữ Shift bấm thẳng vào dòng thì cũng kích hoạt copy khối
+                        if (e.shiftKey) {
+                          handleCopyLineOrBlock(idx, e);
+                        }
+                      }}
+                      className={`group flex items-center justify-between px-3 py-0.5 transition-colors cursor-pointer ${
+                        isInCopiedRange
+                          ? 'bg-[#065f46]/40 border-l-2 border-[#10b981]'
+                          : isHighlighted
                           ? 'bg-[#fef3c7] border-l-2 border-[#f59e0b]'
+                          : isAnchor
+                          ? 'bg-[#1e293b] border-l-2 border-[#60a5fa]'
                           : 'hover:bg-[#1e293b]'
                       }`}
                     >
-                      <pre className={`whitespace-pre font-mono text-[11px] leading-relaxed selection:bg-[#2f5d99] selection:text-white flex-1 overflow-x-auto ${
-                        isHighlighted ? 'text-[#16233a]' : 'text-[#a5b4fc]'
-                      }`}>
+                      {/* Số thứ tự dòng (Line number) */}
+                      <span className="text-[10px] font-mono text-[#475569] w-6 shrink-0 select-none text-right mr-2">
+                        {idx + 1}
+                      </span>
+
+                      <pre
+                        className={`whitespace-pre font-mono text-[11px] leading-relaxed selection:bg-[#2f5d99] selection:text-white flex-1 overflow-x-auto ${
+                          isHighlighted ? 'text-[#16233a]' : 'text-[#a5b4fc]'
+                        }`}
+                      >
                         {line || ' '}
                       </pre>
+
                       <button
-                        onClick={async () => {
-                          await navigator.clipboard.writeText(line);
-                          setCopiedLineIdx(idx);
-                          setTimeout(() => setCopiedLineIdx((cur) => (cur === idx ? null : cur)), 1200);
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyLineOrBlock(idx, e);
                         }}
-                        className={`opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2 p-1 rounded hover:bg-[#2f3f5c] cursor-pointer ${
-                          isHighlighted ? 'text-[#16233a] hover:text-black' : 'text-[#a5b4fc] hover:text-white'
+                        className={`transition-opacity shrink-0 ml-2 p-1 rounded hover:bg-[#2f3f5c] cursor-pointer ${
+                          isInCopiedRange || isAnchor || copiedLineIdx === idx
+                            ? 'opacity-100'
+                            : 'opacity-0 group-hover:opacity-100'
+                        } ${
+                          isHighlighted
+                            ? 'text-[#16233a] hover:text-black'
+                            : 'text-[#a5b4fc] hover:text-white'
                         }`}
-                        title="Sao chép dòng này"
+                        title="Bấm để chép dòng này · Giữ Shift + Bấm để chép cả khối từ mốc trước"
                       >
-                        {copiedLineIdx === idx ? (
-                          <Check className="w-3 h-3 text-[#059669]" />
+                        {isInCopiedRange || copiedLineIdx === idx ? (
+                          <Check className="w-3 h-3 text-[#10b981]" />
                         ) : (
                           <Copy className="w-3 h-3" />
                         )}
