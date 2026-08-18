@@ -22,6 +22,9 @@ export const FormulaPanel: React.FC<FormulaPanelProps> = ({
 }) => {
   const errorMap = new Map(evalResult.errors.map((e) => [e.pointName, e.message]));
 
+  const [focusedPointId, setFocusedPointId] = React.useState<string | null>(null);
+  const inputRefs = React.useRef<Map<string, HTMLInputElement>>(new Map());
+
   const updatePoint = (id: string, patch: Partial<FormulaPoint>) => {
     onUpdatePoints(points.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   };
@@ -54,6 +57,34 @@ export const FormulaPanel: React.FC<FormulaPanelProps> = ({
     }
     onUpdateVariables([...variables, { name, value: 1, min: 0, max: 10 }]);
   };
+
+  const insertTemplate = (template: string) => {
+    if (!focusedPointId) return;
+    const input = inputRefs.current.get(focusedPointId);
+    const point = points.find((p) => p.id === focusedPointId);
+    if (!input || !point) return;
+
+    const start = input.selectionStart ?? point.formula.length;
+    const end = input.selectionEnd ?? point.formula.length;
+    const newFormula = point.formula.slice(0, start) + template + point.formula.slice(end);
+    updatePoint(point.id, { formula: newFormula });
+
+    requestAnimationFrame(() => {
+      input.focus();
+      const newPos = start + template.length;
+      input.setSelectionRange(newPos, newPos);
+    });
+  };
+
+  const FORMULA_TEMPLATES = [
+    { label: '(x,y)', title: 'Toạ độ tự do', template: '(0,0)' },
+    { label: '∠:r', title: 'Toạ độ cực (góc:bán kính)', template: '(90:5)' },
+    { label: '2P−Q', title: 'Đối xứng tâm (P đối xứng qua Q)', template: '2*(A)-(B)' },
+    { label: 'P!t!Q', title: 'Điểm chia đoạn theo tỉ lệ t (0..1) hoặc khoảng cách (vd 3cm)', template: '(A)!0.5!(B)' },
+    { label: '⊥ chiếu', title: 'Chiếu vuông góc: chiếu B lên đường thẳng qua A và C', template: '(A)!(B)!(C)' },
+    { label: '↻ quay', title: 'Quay quanh A theo hướng B, khoảng cách và góc quay', template: '(A)!3cm!60:(B)' },
+    { label: '∩', title: 'Giao điểm 2 đường thẳng', template: 'intersection of A--B and C--D' },
+  ];
 
   return (
     <aside className="w-[420px] flex-none bg-white border-r border-[#dbe4ee] flex flex-col overflow-hidden">
@@ -117,6 +148,30 @@ export const FormulaPanel: React.FC<FormulaPanelProps> = ({
         ))}
       </div>
 
+      {/* Quick insert templates */}
+      <div className="border-b border-[#dbe4ee] p-3 space-y-1.5">
+        <p className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-widest">
+          Chèn nhanh công thức
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {FORMULA_TEMPLATES.map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              onClick={() => insertTemplate(t.template)}
+              title={`${t.title}\nMẫu: ${t.template}`}
+              disabled={!focusedPointId}
+              className="text-[11px] font-mono-code px-2 py-1 rounded border border-[#dbe4ee] bg-white hover:bg-[#e4ecf7] hover:border-[#2f5d99] hover:text-[#2f5d99] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {!focusedPointId && (
+          <p className="text-[10px] text-[#94a3b8] italic">Bấm vào 1 ô công thức bên dưới trước, rồi bấm nút để chèn.</p>
+        )}
+      </div>
+
       {/* Points list, grouped */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
         {groups
@@ -144,8 +199,13 @@ export const FormulaPanel: React.FC<FormulaPanelProps> = ({
                           />
                           <input
                             type="text"
+                            ref={(el) => {
+                              if (el) inputRefs.current.set(p.id, el);
+                              else inputRefs.current.delete(p.id);
+                            }}
                             value={p.formula}
                             onChange={(e) => updatePoint(p.id, { formula: e.target.value })}
+                            onFocus={() => setFocusedPointId(p.id)}
                             className={`flex-1 text-xs font-mono-code border rounded px-2 py-1 ${
                               err ? 'border-[#b91c1c] bg-[#fef2f2]' : 'border-[#dbe4ee]'
                             }`}
