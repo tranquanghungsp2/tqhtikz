@@ -7,6 +7,7 @@ import {
   TikZExportOptions,
   HistoryState,
   BackgroundImageState,
+  PathAnnotation,
 } from './types';
 import { Toolbar } from './components/Toolbar';
 import { Canvas } from './components/Canvas';
@@ -107,9 +108,11 @@ export default function App() {
   const [points, setPoints] = useState<GeoPoint[]>([]);
   const [shapes, setShapes] = useState<GeoShape[]>([]);
   const [pointCounter, setPointCounter] = useState<number>(0);
+  const [pathAnnotations, setPathAnnotations] = useState<PathAnnotation[]>([]);
 
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  const [selectedPathAnnotationId, setSelectedPathAnnotationId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<ToolType>('select');
   const [showVisibilityManager, setShowVisibilityManager] = useState(false);
 
@@ -213,10 +216,11 @@ export default function App() {
         points: JSON.parse(JSON.stringify(points)),
         shapes: JSON.parse(JSON.stringify(shapes)),
         pointCounter,
+        pathAnnotations: JSON.parse(JSON.stringify(pathAnnotations)),
       },
     ]);
     setRedoStack([]);
-  }, [points, shapes, pointCounter]);
+  }, [points, shapes, pointCounter, pathAnnotations]);
 
   // Undo Handler
   const handleUndo = useCallback(() => {
@@ -228,15 +232,18 @@ export default function App() {
         points: JSON.parse(JSON.stringify(points)),
         shapes: JSON.parse(JSON.stringify(shapes)),
         pointCounter,
+        pathAnnotations: JSON.parse(JSON.stringify(pathAnnotations)),
       },
     ]);
     setPoints(lastState.points);
     setShapes(lastState.shapes);
     setPointCounter(lastState.pointCounter);
+    setPathAnnotations(lastState.pathAnnotations || []);
     setUndoStack((prev) => prev.slice(0, prev.length - 1));
     setSelectedPointId(null);
     setSelectedShapeId(null);
-  }, [undoStack, points, shapes, pointCounter]);
+    setSelectedPathAnnotationId(null);
+  }, [undoStack, points, shapes, pointCounter, pathAnnotations]);
 
   // Redo Handler
   const handleRedo = useCallback(() => {
@@ -248,15 +255,18 @@ export default function App() {
         points: JSON.parse(JSON.stringify(points)),
         shapes: JSON.parse(JSON.stringify(shapes)),
         pointCounter,
+        pathAnnotations: JSON.parse(JSON.stringify(pathAnnotations)),
       },
     ]);
     setPoints(nextState.points);
     setShapes(nextState.shapes);
     setPointCounter(nextState.pointCounter);
+    setPathAnnotations(nextState.pathAnnotations || []);
     setRedoStack((prev) => prev.slice(0, prev.length - 1));
     setSelectedPointId(null);
     setSelectedShapeId(null);
-  }, [redoStack, points, shapes, pointCounter]);
+    setSelectedPathAnnotationId(null);
+  }, [redoStack, points, shapes, pointCounter, pathAnnotations]);
 
   // Point & Shape Operations
   const handleAddPoint = useCallback(
@@ -663,6 +673,17 @@ export default function App() {
           return true;
         })
       );
+      setPathAnnotations((prev) =>
+        prev.filter((ann) => {
+          if (ann.type === 'segment_label') {
+            return ann.point1Id !== pointId && ann.point2Id !== pointId;
+          }
+          if (ann.type === 'point_offset_label') {
+            return ann.pointId !== pointId;
+          }
+          return true;
+        })
+      );
       if (selectedPointId === pointId) setSelectedPointId(null);
     },
     [saveSnapshot, selectedPointId]
@@ -704,13 +725,45 @@ export default function App() {
     [saveSnapshot, selectedShapeId]
   );
 
+  const handleAddPathAnnotation = useCallback(
+    (ann: PathAnnotation) => {
+      saveSnapshot();
+      setPathAnnotations((prev) => [...prev, ann]);
+      setSelectedPathAnnotationId(ann.id);
+      setSelectedPointId(null);
+      setSelectedShapeId(null);
+    },
+    [saveSnapshot]
+  );
+
+  const handleUpdatePathAnnotation = useCallback(
+    (id: string, updates: Partial<PathAnnotation>) => {
+      saveSnapshot();
+      setPathAnnotations((prev) =>
+        prev.map((ann) => (ann.id === id ? ({ ...ann, ...updates } as PathAnnotation) : ann))
+      );
+    },
+    [saveSnapshot]
+  );
+
+  const handleDeletePathAnnotation = useCallback(
+    (id: string) => {
+      saveSnapshot();
+      setPathAnnotations((prev) => prev.filter((ann) => ann.id !== id));
+      if (selectedPathAnnotationId === id) setSelectedPathAnnotationId(null);
+    },
+    [saveSnapshot, selectedPathAnnotationId]
+  );
+
   const handleClearAll = useCallback(() => {
     saveSnapshot();
     setPoints([]);
     setShapes([]);
     setPointCounter(0);
+    setPathAnnotations([]);
     setSelectedPointId(null);
     setSelectedShapeId(null);
+    setSelectedPathAnnotationId(null);
     setShowClearModal(false);
   }, [saveSnapshot]);
 
@@ -895,6 +948,7 @@ export default function App() {
 
   const selectedPoint = points.find((p) => p.id === selectedPointId) || null;
   const selectedShape = shapes.find((s) => s.id === selectedShapeId) || null;
+  const selectedPathAnnotation = pathAnnotations.find((ann) => ann.id === selectedPathAnnotationId) || null;
   const nextPointLabel = generatePointLabel(pointCounter);
 
   return (
@@ -908,12 +962,14 @@ export default function App() {
         formulaMode={formulaMode}
         onToggleFormulaMode={() => setFormulaMode((v) => !v)}
         onOpenVisibilityManager={() => setShowVisibilityManager(true)}
-        onLoadDrawing={(loadedPoints, loadedShapes, loadedPointCounter, loadedBgImage) => {
+        onLoadDrawing={(loadedPoints, loadedShapes, loadedPointCounter, loadedBgImage, loadedPathAnnotations) => {
           setPoints(loadedPoints);
           setShapes(loadedShapes);
           setPointCounter(loadedPointCounter);
+          setPathAnnotations(loadedPathAnnotations || []);
           setSelectedPointId(null);
           setSelectedShapeId(null);
+          setSelectedPathAnnotationId(null);
           if (loadedBgImage) {
             setBgImage(loadedBgImage);
           } else {
@@ -1041,6 +1097,7 @@ export default function App() {
                 if (tool !== 'select' && tool !== 'move_background') {
                   setSelectedPointId(null);
                   setSelectedShapeId(null);
+                  setSelectedPathAnnotationId(null);
                 }
               }}
               onAddPoint={handleAddPoint}
@@ -1056,23 +1113,33 @@ export default function App() {
               bgImage={bgImage}
               onUpdateBgImage={setBgImage}
               globalLabelDistance={globalLabelDistance}
+              pathAnnotations={pathAnnotations}
+              selectedPathAnnotationId={selectedPathAnnotationId}
+              onSelectPathAnnotation={setSelectedPathAnnotationId}
+              onAddPathAnnotation={handleAddPathAnnotation}
             />
 
             {/* Column 3: Right Sidebar (~330px) */}
             <RightSidebar
               selectedPoint={selectedPoint}
               selectedShape={selectedShape}
+              selectedPathAnnotation={selectedPathAnnotation}
+              pathAnnotations={pathAnnotations}
               points={points}
               shapes={shapes}
               onUpdatePoint={handleUpdatePoint}
               onUpdateShape={handleUpdateShape}
+              onUpdatePathAnnotation={handleUpdatePathAnnotation}
               onDeletePoint={handleDeletePoint}
               onDeleteShape={handleDeleteShape}
+              onDeletePathAnnotation={handleDeletePathAnnotation}
               onUnmergeShape={handleUnmergeShape}
               onDeselect={() => {
                 setSelectedPointId(null);
                 setSelectedShapeId(null);
+                setSelectedPathAnnotationId(null);
               }}
+              onSelectPathAnnotation={setSelectedPathAnnotationId}
               tikzOptions={tikzOptions}
               onUpdateTikzOptions={(opts) => setTikzOptions((prev) => ({ ...prev, ...opts }))}
               svgRef={svgRef}
