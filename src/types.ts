@@ -43,6 +43,7 @@ export interface GeoPoint {
   x: number; // world x in cm
   y: number; // world y in cm
   labelPos?: LabelPosition;
+  hidden?: boolean; // true = ẩn khỏi mã TikZ xuất ra (dùng toạ độ thô), vẫn hiện mờ trên canvas
   style?: {
     color?: string;
     pointStyle?: PointStyle;
@@ -117,6 +118,7 @@ export interface BaseShape {
   name?: string;
   mergeGroupId?: string; // các shape cùng mergeGroupId sẽ được gộp thành 1 dòng \draw khi xuất TikZ (nếu cùng style)
   chainGroupId?: string; // các shape cùng chainGroupId được nối liên tục thành 1 path khi xuất TikZ
+  hidden?: boolean; // true = loại bỏ hoàn toàn khỏi mã TikZ xuất ra, vẫn hiện mờ trên canvas
 }
 
 export interface SegmentShape extends BaseShape {
