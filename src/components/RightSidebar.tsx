@@ -336,7 +336,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                     type="range"
                     min={4}
                     max={60}
-                    step={1}
+                    step={2}
                     value={selectedPoint.labelDistance ?? 8}
                     onChange={(e) =>
                       onUpdatePoint(selectedPoint.id, {
