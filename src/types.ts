@@ -22,7 +22,8 @@ export type ToolType =
   | 'parallel'
   | 'perpendicular'
   | 'move_background'
-  | 'eyedropper';
+  | 'eyedropper'
+  | 'toggle_visibility';
 
 export type LabelPosition =
   | 'auto'
