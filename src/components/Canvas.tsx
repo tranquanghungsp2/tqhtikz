@@ -3026,26 +3026,43 @@ export const Canvas: React.FC<CanvasProps> = ({
             </>
           )}
 
-          {/* Math Label in EB Garamond Italic */}
+          {/* Math Label — render bằng KaTeX (LaTeX thật), khớp đúng cách chữ sẽ hiện trong PDF,
+              kể cả chỉ số dưới (A_1 -> $A_{1}$) tự động đúng kiểu LaTeX, không cần tspan tay nữa. */}
           {pt.label && (
             <>
-              <text
-                x={labelX}
-                y={labelY}
-                textAnchor={textAnchor}
-                className="font-math text-[15px] font-medium fill-[#16233a] pointer-events-none select-none drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]"
-              >
-                {pt.label.includes('_') ? (
-                  <>
-                    <tspan>{pt.label.split('_')[0]}</tspan>
-                    <tspan dy="3" fontSize="10px">
-                      {pt.label.split('_')[1]}
-                    </tspan>
-                  </>
-                ) : (
-                  pt.label
-                )}
-              </text>
+              {(() => {
+                const boxW = 60;
+                const boxH = 24;
+                const boxX =
+                  textAnchor === 'start' ? labelX : textAnchor === 'end' ? labelX - boxW : labelX - boxW / 2;
+                const boxY = labelY - boxH / 2 - 5;
+                return (
+                  <foreignObject
+                    x={boxX}
+                    y={boxY}
+                    width={boxW}
+                    height={boxH}
+                    style={{ pointerEvents: 'none', overflow: 'visible' }}
+                  >
+                    <div
+                      {...({ xmlns: 'http://www.w3.org/1999/xhtml' } as any)}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent:
+                          textAnchor === 'start' ? 'flex-start' : textAnchor === 'end' ? 'flex-end' : 'center',
+                        fontSize: '15px',
+                        whiteSpace: 'nowrap',
+                        color: '#16233a',
+                        filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.8))',
+                      }}
+                      dangerouslySetInnerHTML={{ __html: renderLatexToHtml(getMathLabel(pt.label)) }}
+                    />
+                  </foreignObject>
+                );
+              })()}
               {/* Vùng bấm kéo nhãn — vòng tròn vô hình quanh vị trí nhãn.
                   Bán kính nhỏ hơn vùng bấm chọn điểm (12-14px) để 2 vùng bấm ít đè lên nhau,
                   đỡ bị dính nhãn khi đang cố bấm chọn điểm ở gần đó. */}
