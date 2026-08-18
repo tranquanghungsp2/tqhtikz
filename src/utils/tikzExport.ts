@@ -688,27 +688,82 @@ export function generateTikZCodeWithLineMap(
     lines.push(...shapeDrawLines);
   }
 
-  // 2. Nhãn và điểm — cũng dùng toạ độ số thô, không còn phụ thuộc \coordinate nào
+  // 2. Nhãn và điểm — nhóm theo khoảng cách nhãn hoặc xuất lẻ
   if ((options.includePoints || options.includeLabels) && points.length > 0) {
-    lines.push('');
-    lines.push('  % --- Nhãn và điểm ---');
+    const visiblePoints = points.filter((p) => !p.hidden);
 
-    for (const pt of points) {
-      if (pt.hidden) continue;
-      const pos = pt.labelPos && pt.labelPos !== 'auto' ? pt.labelPos : 'above right';
+    // Điểm có nhãn
+    const visibleLabeledPoints = visiblePoints.filter((pt) => pt.label);
+    // Điểm không có nhãn (điểm phụ dựng hình)
+    const visibleUnlabeledPoints = visiblePoints.filter((pt) => !pt.label);
 
-      if (options.includePoints && pt.style?.pointStyle !== 'hidden') {
+    // Xuất điểm không nhãn lẻ tẻ trước
+    if (options.includePoints && visibleUnlabeledPoints.length > 0) {
+      lines.push('');
+      lines.push('  % --- Điểm phụ không nhãn ---');
+      for (const pt of visibleUnlabeledPoints) {
+        if (pt.style?.pointStyle === 'hidden') continue;
         if (pt.style?.pointStyle === 'circle') {
-          lines.push(`  \\draw[fill=white] ${rawCoord(pt)} circle (1.5pt);`);
+          lines.push(`  \\draw[fill=white] (${getTikZCoordName(pt)}) circle (1.5pt);`);
         } else if (pt.style?.pointStyle === 'cross') {
-          lines.push(`  \\draw ${rawCoord(pt)} +(-2pt,-2pt) -- +(2pt,2pt) +(-2pt,2pt) -- +(2pt,-2pt);`);
+          lines.push(`  \\draw (${getTikZCoordName(pt)}) +(-2pt,-2pt) -- +(2pt,2pt) +(-2pt,2pt) -- +(2pt,-2pt);`);
         } else {
-          lines.push(`  \\fill ${rawCoord(pt)} circle (1.5pt);`);
+          lines.push(`  \\fill (${getTikZCoordName(pt)}) circle (1.5pt);`);
         }
       }
+    }
 
-      if (options.includeLabels && pt.label) {
-        lines.push(`  \\node[${pos}] at ${rawCoord(pt)} {${getMathLabel(pt.label)}};`);
+    // Xuất nhóm các điểm có nhãn dùng \foreach
+    if (visibleLabeledPoints.length > 0) {
+      if (options.includePoints && options.includeLabels) {
+        const groupedByDistance = new Map<number, GeoPoint[]>();
+        visibleLabeledPoints.forEach((pt) => {
+          const dist = Math.round((pt.labelDistance ?? 8) * 10) / 10;
+          const arr = groupedByDistance.get(dist) || [];
+          arr.push(pt);
+          groupedByDistance.set(dist, arr);
+        });
+
+        if (groupedByDistance.size > 0) {
+          lines.push('');
+          lines.push('  % --- Nhãn và điểm (nhóm theo khoảng cách nhãn) ---');
+          Array.from(groupedByDistance.entries())
+            .sort((a, b) => a[0] - b[0])
+            .forEach(([distancePt, ptsInGroup]) => {
+              const pairs = ptsInGroup
+                .map((pt) => {
+                  const angle = Math.round((pt.labelAngleDeg ?? 45) * 10) / 10;
+                  return `${getTikZCoordName(pt)}/${formatNumber(angle)}`;
+                })
+                .join(',');
+              lines.push(`  \\foreach \\x/\\y in{`);
+              lines.push(`    ${pairs}`);
+              lines.push(`  }{`);
+              lines.push(`    \\draw[fill=black] (\\x) circle(1pt) ++ (\\y:${formatNumber(distancePt)}pt) node{$\\x$};`);
+              lines.push(`  }`);
+            });
+        }
+      } else {
+        // Fallback lẻ tẻ nếu chỉ bật nhãn hoặc chỉ bật điểm
+        lines.push('');
+        lines.push('  % --- Nhãn hoặc điểm riêng lẻ ---');
+        for (const pt of visibleLabeledPoints) {
+          if (options.includePoints && pt.style?.pointStyle !== 'hidden') {
+            if (pt.style?.pointStyle === 'circle') {
+              lines.push(`  \\draw[fill=white] (${getTikZCoordName(pt)}) circle (1.5pt);`);
+            } else if (pt.style?.pointStyle === 'cross') {
+              lines.push(`  \\draw (${getTikZCoordName(pt)}) +(-2pt,-2pt) -- +(2pt,2pt) +(-2pt,2pt) -- +(2pt,-2pt);`);
+            } else {
+              lines.push(`  \\fill (${getTikZCoordName(pt)}) circle (1.5pt);`);
+            }
+          }
+          if (options.includeLabels) {
+            const { angle, distance } = pt.labelAngleDeg !== undefined && pt.labelDistance !== undefined
+              ? { angle: pt.labelAngleDeg, distance: pt.labelDistance }
+              : { angle: 45, distance: 8 };
+            lines.push(`  \\node at ($(${getTikZCoordName(pt)}) + (${formatNumber(angle)}:${formatNumber(distance)}pt)$) {${getMathLabel(pt.label)}};`);
+          }
+        }
       }
     }
   }
