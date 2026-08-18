@@ -290,6 +290,42 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </div>
         </div>
 
+        {/* Nhãn & Ghi chú */}
+        <div>
+          <p className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-widest mb-1.5 px-1">
+            Nhãn & Ghi chú (TikZ \path)
+          </p>
+          <div className="space-y-1">
+            <button
+              id="tool-btn-path_segment_label"
+              onClick={() => onSelectTool('path_segment_label')}
+              title="Ghi nhãn dán trên đoạn thẳng giữa 2 điểm (A)--(B) node[pos=0.5, left] {$7\,m$}"
+              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
+                activeTool === 'path_segment_label'
+                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs ring-1 ring-[#2f5d99]/10'
+                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
+              }`}
+            >
+              <span className="font-mono text-xs font-bold leading-none w-4 text-center">⇎</span>
+              <span>Nhãn trên đoạn (2 điểm)</span>
+            </button>
+
+            <button
+              id="tool-btn-path_offset_label"
+              onClick={() => onSelectTool('path_offset_label')}
+              title="Ghi chú nhãn lệch / nhãn góc từ 1 điểm (A) ++ (30:20pt) node{$30^\circ$}"
+              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
+                activeTool === 'path_offset_label'
+                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs ring-1 ring-[#2f5d99]/10'
+                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
+              }`}
+            >
+              <span className="font-mono text-xs font-bold leading-none w-4 text-center">∡</span>
+              <span>Nhãn góc / lệch (1 điểm)</span>
+            </button>
+          </div>
+        </div>
+
         {/* Group 3: Hình cơ bản - Bento 2-column grid */}
         <div>
           <p className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-widest mb-1.5 px-1">
