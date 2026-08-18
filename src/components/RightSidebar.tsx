@@ -324,6 +324,33 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   </select>
                 </div>
 
+                {/* Custom Label Distance Slider */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-[#5b6b82] uppercase tracking-wider">Khoảng cách nhãn</span>
+                    <span className="text-[11px] font-semibold text-[#2f5d99]">
+                      {(selectedPoint.labelDistance ?? 8).toFixed(0)}pt
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={4}
+                    max={60}
+                    step={1}
+                    value={selectedPoint.labelDistance ?? 8}
+                    onChange={(e) =>
+                      onUpdatePoint(selectedPoint.id, {
+                        labelDistance: Number(e.target.value),
+                        labelAngleDeg: selectedPoint.labelAngleDeg ?? 45,
+                      })
+                    }
+                    className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
+                  />
+                  <p className="text-[10px] text-[#94a3b8] italic leading-tight">
+                    Hoặc kéo trực tiếp chữ nhãn trên canvas để đổi cả góc lẫn khoảng cách cùng lúc.
+                  </p>
+                </div>
+
                 {/* Point Style */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-[#5b6b82] uppercase tracking-wider">
