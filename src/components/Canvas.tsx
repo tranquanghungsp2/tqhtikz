@@ -16,6 +16,7 @@ import {
   AppSettings,
   BezierControlPoint,
   BackgroundImageState,
+  PathAnnotation,
 } from '../types';
 import {
   worldToScreen,
@@ -86,6 +87,10 @@ interface CanvasProps {
   bgImage?: BackgroundImageState;
   onUpdateBgImage?: React.Dispatch<React.SetStateAction<BackgroundImageState>>;
   globalLabelDistance: number;
+  pathAnnotations: PathAnnotation[];
+  selectedPathAnnotationId: string | null;
+  onSelectPathAnnotation: (id: string | null) => void;
+  onAddPathAnnotation: (ann: PathAnnotation) => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -123,6 +128,10 @@ export const Canvas: React.FC<CanvasProps> = ({
   bgImage,
   onUpdateBgImage,
   globalLabelDistance,
+  pathAnnotations,
+  selectedPathAnnotationId,
+  onSelectPathAnnotation,
+  onAddPathAnnotation,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -197,6 +206,187 @@ export const Canvas: React.FC<CanvasProps> = ({
     'below left': -135,
     'below right': -45,
     auto: 45,
+  };
+
+  // ----------------------------------------------------
+  // Render Path Annotations (Nhãn ghi chú)
+  // ----------------------------------------------------
+  const renderPathAnnotations = () => {
+    const pointsMap = new Map<string, GeoPoint>();
+    points.forEach((p) => pointsMap.set(p.id, p));
+
+    return pathAnnotations.map((item) => {
+      const isSelected = selectedPathAnnotationId === item.id;
+      
+      if (item.type === 'segment_label') {
+        const p1 = pointsMap.get(item.point1Id);
+        const p2 = pointsMap.get(item.point2Id);
+        if (!p1 || !p2) return null;
+
+        const s1 = worldToScreen(p1.x, p1.y, viewport);
+        const s2 = worldToScreen(p2.x, p2.y, viewport);
+
+        const posVal = item.pos !== undefined ? item.pos : 0.5;
+        const lx = s1.x + posVal * (s2.x - s1.x);
+        const ly = s1.y + posVal * (s2.y - s1.y);
+
+        const getDisplayOffset = (opt?: string) => {
+          const distVal = 16;
+          switch (opt) {
+            case 'above': return { dx: 0, dy: -distVal };
+            case 'below': return { dx: 0, dy: distVal };
+            case 'left': return { dx: -distVal * 1.5, dy: 4 };
+            case 'right': return { dx: distVal * 1.5, dy: 4 };
+            case 'above left': return { dx: -distVal, dy: -distVal };
+            case 'above right': return { dx: distVal, dy: -distVal };
+            case 'below left': return { dx: -distVal, dy: distVal };
+            case 'below right': return { dx: distVal, dy: distVal };
+            default: return { dx: 0, dy: -distVal };
+          }
+        };
+
+        const { dx, dy } = getDisplayOffset(item.positionOption);
+        const tx = lx + dx;
+        const ty = ly + dy;
+
+        return (
+          <g
+            key={item.id}
+            className="cursor-pointer select-none"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectPathAnnotation(item.id);
+              onSelectPoint(null);
+              onSelectShape(null);
+            }}
+          >
+            <line
+              x1={s1.x}
+              y1={s1.y}
+              x2={s2.x}
+              y2={s2.y}
+              stroke={isSelected ? '#3b82f6' : '#94a3b8'}
+              strokeWidth={1}
+              strokeDasharray="3 3"
+              opacity={0.6}
+            />
+
+            {isSelected && (
+              <rect
+                x={tx - 35}
+                y={ty - 12}
+                width={70}
+                height={24}
+                rx={4}
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth={2}
+              />
+            )}
+
+            <rect
+              x={tx - 32}
+              y={ty - 10}
+              width={64}
+              height={20}
+              rx={3}
+              fill={isSelected ? '#eff6ff' : '#f8fafc'}
+              stroke={isSelected ? '#3b82f6' : '#cbd5e1'}
+              strokeWidth={1}
+              opacity={0.9}
+            />
+
+            <text
+              x={tx}
+              y={ty + 4}
+              textAnchor="middle"
+              className="text-[11px] font-math font-medium"
+              fill={isSelected ? '#1d4ed8' : '#334155'}
+            >
+              {item.text}
+            </text>
+          </g>
+        );
+      } else if (item.type === 'point_offset_label') {
+        const pt = pointsMap.get(item.pointId);
+        if (!pt) return null;
+
+        const s = worldToScreen(pt.x, pt.y, viewport);
+        const rad = (item.angle * Math.PI) / 180;
+        const distPx = item.distancePt ?? 20;
+
+        const tx = s.x + distPx * Math.cos(rad);
+        const ty = s.y - distPx * Math.sin(rad);
+
+        return (
+          <g
+            key={item.id}
+            className="cursor-pointer select-none"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectPathAnnotation(item.id);
+              onSelectPoint(null);
+              onSelectShape(null);
+            }}
+          >
+            <line
+              x1={s.x}
+              y1={s.y}
+              x2={tx}
+              y2={ty}
+              stroke={isSelected ? '#3b82f6' : '#94a3b8'}
+              strokeWidth={1}
+              strokeDasharray="2 2"
+              opacity={0.6}
+            />
+
+            <circle
+              cx={tx}
+              cy={ty}
+              r={3}
+              fill={isSelected ? '#3b82f6' : '#94a3b8'}
+            />
+
+            {isSelected && (
+              <rect
+                x={tx - 30}
+                y={ty - 12}
+                width={60}
+                height={24}
+                rx={4}
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth={2}
+              />
+            )}
+
+            <rect
+              x={tx - 27}
+              y={ty - 10}
+              width={54}
+              height={20}
+              rx={3}
+              fill={isSelected ? '#eff6ff' : '#f8fafc'}
+              stroke={isSelected ? '#3b82f6' : '#cbd5e1'}
+              strokeWidth={1}
+              opacity={0.9}
+            />
+
+            <text
+              x={tx}
+              y={ty + 4}
+              textAnchor="middle"
+              className="text-[11px] font-math font-medium"
+              fill={isSelected ? '#1d4ed8' : '#334155'}
+            >
+              {item.text}
+            </text>
+          </g>
+        );
+      }
+
+      return null;
+    });
   };
 
   const getPointLabelAngleDistance = (pt: GeoPoint): { angle: number; distance: number } => {
@@ -745,6 +935,47 @@ export const Canvas: React.FC<CanvasProps> = ({
         }
         setTempPoints([]);
       }
+      return;
+    }
+
+    // ----------------- TOOL: PATH_SEGMENT_LABEL -----------------
+    if (activeTool === 'path_segment_label') {
+      const pt = getOrCreatePoint(sx, sy, wx, wy);
+      if (tempPoints.length === 0) {
+        setTempPoints([pt]);
+      } else {
+        const p1 = tempPoints[0];
+        if (p1.id !== pt.id) {
+          const newAnnotation: PathAnnotation = {
+            id: `pa_seg_${Date.now()}`,
+            type: 'segment_label',
+            point1Id: p1.id,
+            point2Id: pt.id,
+            text: '$7\\,m$',
+            pos: 0.5,
+            positionOption: 'above',
+          };
+          onAddPathAnnotation(newAnnotation);
+          onSelectTool('select');
+        }
+        setTempPoints([]);
+      }
+      return;
+    }
+
+    // ----------------- TOOL: PATH_OFFSET_LABEL -----------------
+    if (activeTool === 'path_offset_label') {
+      const pt = getOrCreatePoint(sx, sy, wx, wy);
+      const newAnnotation: PathAnnotation = {
+        id: `pa_off_${Date.now()}`,
+        type: 'point_offset_label',
+        pointId: pt.id,
+        text: '$30^\\circ$',
+        angle: 30,
+        distancePt: 20,
+      };
+      onAddPathAnnotation(newAnnotation);
+      onSelectTool('select');
       return;
     }
 
@@ -1501,6 +1732,12 @@ export const Canvas: React.FC<CanvasProps> = ({
         return tempPoints.length === 0
           ? 'Bước 1/2: Nhấp chọn điểm đầu'
           : 'Bước 2/2: Nhấp chọn điểm cuối (đường màu cam là nét đang vẽ)';
+      case 'path_segment_label':
+        return tempPoints.length === 0
+          ? 'Nhãn đoạn: Bước 1/2: Nhấp chọn điểm thứ nhất'
+          : 'Nhãn đoạn: Bước 2/2: Nhấp chọn điểm thứ hai để gắn nhãn nối';
+      case 'path_offset_label':
+        return 'Nhãn góc / lệch: Nhấp chọn 1 điểm để đặt nhãn góc/vị trí lệch tâm';
       case 'polyline':
         return `Đã chọn ${polylinePoints.length} điểm · Nhấp điểm tiếp theo, nhấp lại điểm đầu để đóng hoặc bấm Hoàn thành`;
       case 'circle':
@@ -2245,7 +2482,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       );
     }
 
-    if (activeTool === 'segment' && tempPoints.length === 1) {
+    if ((activeTool === 'segment' || activeTool === 'path_segment_label') && tempPoints.length === 1) {
       const s1 = worldToScreen(tempPoints[0].x, tempPoints[0].y, viewport);
       return (
         <line
@@ -2943,6 +3180,9 @@ export const Canvas: React.FC<CanvasProps> = ({
 
         {/* Layer 2: Dynamic Live Preview (nét đứt #b45309) */}
         <g id="preview-layer">{renderPreview()}</g>
+
+        {/* Layer 2.5: Path Annotations (Nhãn ghi chú) */}
+        <g id="path-annotations-layer">{renderPathAnnotations()}</g>
 
         {/* Layer 3: Geometric Points & Labels */}
         <g id="points-layer">{renderPoints()}</g>
