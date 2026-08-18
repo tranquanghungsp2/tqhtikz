@@ -75,6 +75,7 @@ interface CanvasProps {
   onSelectTool: (tool: ToolType) => void;
   onAddPoint: (point: GeoPoint) => void;
   onUpdatePointCoord: (id: string, x: number, y: number) => void;
+  onUpdatePoint: (id: string, updates: Partial<GeoPoint>) => void;
   onAddShape: (shape: GeoShape) => void;
   onUpdateShape: (id: string, updates: Partial<GeoShape>) => void;
   nextPointLabel: string;
@@ -110,6 +111,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   onSelectTool,
   onAddPoint,
   onUpdatePointCoord,
+  onUpdatePoint,
   onAddShape,
   onUpdateShape,
   nextPointLabel,
@@ -1265,6 +1267,12 @@ export const Canvas: React.FC<CanvasProps> = ({
   const handleShapeClick = (shapeId: string, e: React.MouseEvent) => {
     e.stopPropagation();
 
+    if (activeTool === 'toggle_visibility') {
+      const shape = shapes.find((s) => s.id === shapeId);
+      if (shape) onUpdateShape(shapeId, { hidden: !shape.hidden });
+      return;
+    }
+
     if (activeTool === 'select') {
       if (e.ctrlKey || e.metaKey) {
         setMultiSelectedIds((prev) =>
@@ -1436,6 +1444,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   // ----------------------------------------------------
   const getToolHint = (): string => {
     switch (activeTool) {
+      case 'toggle_visibility':
+        return 'Nhấp vào 1 điểm hoặc hình để đảo trạng thái ẩn/hiện — ẩn nghĩa là loại khỏi mã TikZ xuất ra, vẫn hiện mờ trên canvas để bạn còn nhìn thấy.';
       case 'eyedropper':
         return bgImage?.dataUrl
           ? 'Nhấp vào ảnh nền để lấy mã màu tại đúng vị trí đó.'
@@ -2158,7 +2168,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         key={shape.id}
         onClick={(e) => handleShapeClick(shape.id, e)}
         onMouseDown={handleShapeMouseDown}
-        className={activeTool === 'select' ? 'cursor-move' : 'cursor-pointer'}
+        className={activeTool === 'select' ? 'cursor-move' : activeTool === 'toggle_visibility' ? 'cursor-help' : 'cursor-pointer'}
         transform={transformAttr}
         opacity={shapeOpacity}
       >
@@ -2661,10 +2671,14 @@ export const Canvas: React.FC<CanvasProps> = ({
       return (
         <g
           key={pt.id}
-          className="cursor-move select-none"
+          className={activeTool === 'toggle_visibility' ? 'cursor-help select-none' : 'cursor-move select-none'}
           opacity={pointOpacity}
           onClick={(e) => {
             e.stopPropagation();
+            if (activeTool === 'toggle_visibility') {
+              onUpdatePoint(pt.id, { hidden: !pt.hidden });
+              return;
+            }
             onSelectPoint(pt.id);
             onSelectShape(null);
           }}
@@ -2746,6 +2760,8 @@ export const Canvas: React.FC<CanvasProps> = ({
           ? 'cursor-grabbing'
           : activeTool === 'select'
           ? 'cursor-default'
+          : activeTool === 'toggle_visibility'
+          ? 'cursor-help'
           : activeTool === 'move_background'
           ? (bgImage?.locked ? 'cursor-not-allowed' : 'cursor-move')
           : 'cursor-crosshair'
