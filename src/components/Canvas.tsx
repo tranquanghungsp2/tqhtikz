@@ -3046,11 +3046,13 @@ export const Canvas: React.FC<CanvasProps> = ({
                   pt.label
                 )}
               </text>
-              {/* Vùng bấm kéo nhãn — vòng tròn vô hình lớn hơn xung quanh vị trí nhãn */}
+              {/* Vùng bấm kéo nhãn — vòng tròn vô hình quanh vị trí nhãn.
+                  Bán kính nhỏ hơn vùng bấm chọn điểm (12-14px) để 2 vùng bấm ít đè lên nhau,
+                  đỡ bị dính nhãn khi đang cố bấm chọn điểm ở gần đó. */}
               <circle
                 cx={labelX}
                 cy={labelY}
-                r={12}
+                r={7}
                 fill="transparent"
                 className="cursor-move"
                 onMouseDown={(e) => {
