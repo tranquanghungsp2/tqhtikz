@@ -148,6 +148,13 @@ export default function App() {
   );
 
   // Multi-step tool configurations
+  const [globalLabelDistance, setGlobalLabelDistance] = useState<number>(8);
+
+  const handleSetGlobalLabelDistance = useCallback((value: number) => {
+    setGlobalLabelDistance(value);
+    setPoints((prev) => prev.map((p) => ({ ...p, labelDistance: value })));
+  }, []);
+
   const [polygonSides, setPolygonSides] = useState<number>(5);
   const [rectangleMode, setRectangleMode] = useState<'shape' | 'points'>('shape');
   const [bezierSegments, setBezierSegments] = useState<number>(2);
@@ -1003,6 +1010,8 @@ export default function App() {
               onCancelRadiusPick={handleCancelRadiusPick}
               bgImage={bgImage}
               onUpdateBgImage={setBgImage}
+              globalLabelDistance={globalLabelDistance}
+              onSetGlobalLabelDistance={handleSetGlobalLabelDistance}
             />
 
             {/* Column 2: Middle Canvas Area */}
@@ -1046,6 +1055,7 @@ export default function App() {
               onFinishPolyline={handleFinishPolyline}
               bgImage={bgImage}
               onUpdateBgImage={setBgImage}
+              globalLabelDistance={globalLabelDistance}
             />
 
             {/* Column 3: Right Sidebar (~330px) */}
