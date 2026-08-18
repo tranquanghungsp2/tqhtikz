@@ -330,7 +330,7 @@ export function generateTikZCodeWithLineMap(
       for (const compIds of components) {
         if (compIds.length === 1) {
           const s = shapeMap.get(compIds[0])!;
-          const sp = buildFullSubpathString(s, pointsMap, rawCoord);
+          const sp = buildFullSubpathString(s, pointsMap, rawCoord, coordFor);
           if (sp) subpaths.push(sp);
           continue;
         }
@@ -345,7 +345,7 @@ export function generateTikZCodeWithLineMap(
           let ok = true;
           for (const step of order) {
             const s = shapeMap.get(step.id)!;
-            const seg = buildChainSegmentString(s, step.reversed, pointsMap, rawCoord);
+            const seg = buildChainSegmentString(s, step.reversed, pointsMap, rawCoord, coordFor);
             if (seg === null) {
               ok = false;
               break;
@@ -357,7 +357,7 @@ export function generateTikZCodeWithLineMap(
             subpaths.push(pathStr);
           } else {
             compIds.forEach((id) => {
-              const sp = buildFullSubpathString(shapeMap.get(id)!, pointsMap, rawCoord);
+              const sp = buildFullSubpathString(shapeMap.get(id)!, pointsMap, rawCoord, coordFor);
               if (sp) subpaths.push(sp);
             });
           }
@@ -365,14 +365,14 @@ export function generateTikZCodeWithLineMap(
           // Không tìm được thứ tự nối hợp lệ (ví dụ 3 mảnh chụm chung 1 điểm) — không ép nối,
           // xuất riêng từng mảnh trong cụm.
           compIds.forEach((id) => {
-            const sp = buildFullSubpathString(shapeMap.get(id)!, pointsMap, rawCoord);
+            const sp = buildFullSubpathString(shapeMap.get(id)!, pointsMap, rawCoord, coordFor);
             if (sp) subpaths.push(sp);
           });
         }
       }
     } else {
       groupShapes.forEach((s) => {
-        const sp = buildFullSubpathString(s, pointsMap, rawCoord);
+        const sp = buildFullSubpathString(s, pointsMap, rawCoord, coordFor);
         if (sp) subpaths.push(sp);
       });
     }
@@ -430,7 +430,7 @@ export function generateTikZCodeWithLineMap(
     let ok = true;
     for (const step of order) {
       const s = shapeMap.get(step.id)!;
-      const seg = buildChainSegmentString(s, step.reversed, pointsMap, rawCoord);
+      const seg = buildChainSegmentString(s, step.reversed, pointsMap, rawCoord, coordFor);
       if (seg === null) {
         ok = false;
         break;
