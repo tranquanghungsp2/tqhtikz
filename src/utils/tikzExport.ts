@@ -780,18 +780,15 @@ export function generateTikZCodeWithLineMap(
         const p1 = pointsMap.get(item.point1Id);
         const p2 = pointsMap.get(item.point2Id);
         if (p1 && p2) {
-          const name1 = getTikZCoordName(p1);
-          const name2 = getTikZCoordName(p2);
           const posVal = item.pos !== undefined ? item.pos : 0.5;
           const opt = item.positionOption ? `,${item.positionOption}` : '';
-          lines.push(`    (${name1})--(${name2}) node[pos=${posVal}${opt}] {${item.text}}`);
+          lines.push(`    ${coordFor(p1)}--${coordFor(p2)} node[pos=${posVal}${opt}] {${item.text}}`);
         }
       } else if (item.type === 'point_offset_label') {
         const pt = pointsMap.get(item.pointId);
         if (pt) {
-          const name = getTikZCoordName(pt);
           const distPt = item.distancePt ?? 20;
-          lines.push(`    (${name}) ++ (${formatNumber(item.angle)}:${distPt}pt) node{${item.text}}`);
+          lines.push(`    ${coordFor(pt)} ++ (${formatNumber(item.angle)}:${distPt}pt) node{${item.text}}`);
         }
       }
     });
