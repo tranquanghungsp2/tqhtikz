@@ -21,7 +21,7 @@ import {
   DashPattern,
   TikZExportOptions,
 } from '../types';
-import { generateTikZCode, getMathLabel } from '../utils/tikzExport';
+import { generateTikZCodeWithLineMap, getMathLabel } from '../utils/tikzExport';
 import { formatCm } from '../utils/geometry';
 
 interface RightSidebarProps {
@@ -97,7 +97,22 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedLineIdx, setCopiedLineIdx] = useState<number | null>(null);
 
-  const tikzCode = generateTikZCode(points, shapes, tikzOptions);
+  const { code: tikzCode, shapeToLines } = generateTikZCodeWithLineMap(points, shapes, tikzOptions);
+  const selectedShapeId = selectedShape?.id;
+  const highlightedLines = React.useMemo(() => {
+    return new Set<number>(selectedShapeId ? shapeToLines.get(selectedShapeId) || [] : []);
+  }, [selectedShapeId, shapeToLines]);
+
+  const tikzLineRefs = React.useRef<Map<number, HTMLDivElement>>(new Map());
+
+  React.useEffect(() => {
+    if (highlightedLines.size > 0) {
+      const linesArr = Array.from(highlightedLines) as number[];
+      const firstLine = Math.min(...linesArr);
+      const el = tikzLineRefs.current.get(firstLine);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [selectedShapeId]);
 
   const handleCopyCode = async () => {
     try {
@@ -775,31 +790,46 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               </div>
 
               <div className="flex-1 min-h-[220px] bg-[#17233a] rounded-lg overflow-auto border border-[#1e293b] shadow-inner">
-                {tikzCode.split('\n').map((line, idx) => (
-                  <div
-                    key={idx}
-                    className="group flex items-center justify-between px-4 py-0.5 hover:bg-[#1e293b] transition-colors"
-                  >
-                    <pre className="whitespace-pre font-mono text-[11px] leading-relaxed text-[#a5b4fc] selection:bg-[#2f5d99] selection:text-white flex-1 overflow-x-auto">
-                      {line || ' '}
-                    </pre>
-                    <button
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(line);
-                        setCopiedLineIdx(idx);
-                        setTimeout(() => setCopiedLineIdx((cur) => (cur === idx ? null : cur)), 1200);
+                {tikzCode.split('\n').map((line, idx) => {
+                  const isHighlighted = highlightedLines.has(idx);
+                  return (
+                    <div
+                      key={idx}
+                      ref={(el) => {
+                        if (el) tikzLineRefs.current.set(idx, el);
+                        else tikzLineRefs.current.delete(idx);
                       }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2 p-1 rounded hover:bg-[#2f3f5c] text-[#a5b4fc] hover:text-white cursor-pointer"
-                      title="Sao chép dòng này"
+                      className={`group flex items-center justify-between px-4 py-0.5 transition-colors ${
+                        isHighlighted
+                          ? 'bg-[#fef3c7] border-l-2 border-[#f59e0b]'
+                          : 'hover:bg-[#1e293b]'
+                      }`}
                     >
-                      {copiedLineIdx === idx ? (
-                        <Check className="w-3 h-3 text-[#059669]" />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                    </button>
-                  </div>
-                ))}
+                      <pre className={`whitespace-pre font-mono text-[11px] leading-relaxed selection:bg-[#2f5d99] selection:text-white flex-1 overflow-x-auto ${
+                        isHighlighted ? 'text-[#16233a]' : 'text-[#a5b4fc]'
+                      }`}>
+                        {line || ' '}
+                      </pre>
+                      <button
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(line);
+                          setCopiedLineIdx(idx);
+                          setTimeout(() => setCopiedLineIdx((cur) => (cur === idx ? null : cur)), 1200);
+                        }}
+                        className={`opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2 p-1 rounded hover:bg-[#2f3f5c] cursor-pointer ${
+                          isHighlighted ? 'text-[#16233a] hover:text-black' : 'text-[#a5b4fc] hover:text-white'
+                        }`}
+                        title="Sao chép dòng này"
+                      >
+                        {copiedLineIdx === idx ? (
+                          <Check className="w-3 h-3 text-[#059669]" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
