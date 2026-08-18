@@ -158,6 +158,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     initialPanY: number;
   }>({ wx: 0, wy: 0, initialPanX: 0, initialPanY: 0 });
   const [draggingPointId, setDraggingPointId] = useState<string | null>(null);
+  const [draggingLabelPointId, setDraggingLabelPointId] = useState<string | null>(null);
   const [draggingControl, setDraggingControl] = useState<{
     shapeId: string;
     segIndex: number;
@@ -183,6 +184,26 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [pickedColor, setPickedColor] = useState<{ hex: string; r: number; g: number; b: number } | null>(null);
   const [colorCopied, setColorCopied] = useState(false);
   const sampleCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const LEGACY_LABEL_POS_TO_ANGLE: Record<string, number> = {
+    above: 90,
+    below: -90,
+    left: 180,
+    right: 0,
+    'above left': 135,
+    'above right': 45,
+    'below left': -135,
+    'below right': -45,
+    auto: 45,
+  };
+
+  const getPointLabelAngleDistance = (pt: GeoPoint): { angle: number; distance: number } => {
+    if (pt.labelAngleDeg !== undefined && pt.labelDistance !== undefined) {
+      return { angle: pt.labelAngleDeg, distance: pt.labelDistance };
+    }
+    const angle = LEGACY_LABEL_POS_TO_ANGLE[pt.labelPos || 'auto'] ?? 45;
+    return { angle, distance: 8 };
+  };
 
   // Measure container size
   useEffect(() => {
@@ -1223,6 +1244,20 @@ export const Canvas: React.FC<CanvasProps> = ({
       return;
     }
 
+    // Handle label dragging (kéo nhãn quanh điểm)
+    if (draggingLabelPointId) {
+      const pt = points.find((p) => p.id === draggingLabelPointId);
+      if (pt) {
+        const ptScreen = worldToScreen(pt.x, pt.y, viewport);
+        const dx = sx - ptScreen.x;
+        const dy = sy - ptScreen.y;
+        const angle = (Math.atan2(-dy, dx) * 180) / Math.PI; // đảo dấu dy vì màn hình Y hướng xuống
+        const distance = Math.max(4, Math.min(60, Math.hypot(dx, dy))); // giới hạn 4-60pt cho hợp lý
+        onUpdatePoint(draggingLabelPointId, { labelAngleDeg: angle, labelDistance: distance });
+      }
+      return;
+    }
+
     // Handle point dragging
     if (draggingPointId) {
       onUpdatePointCoord(draggingPointId, wx, wy);
@@ -1258,6 +1293,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     setPendingPanStart(null);
     setIsDraggingBg(false);
     setDraggingPointId(null);
+    setDraggingLabelPointId(null);
     setDraggingControl(null);
     setDraggingShapeId(null);
     setShapeDragStart(null);
@@ -2625,45 +2661,13 @@ export const Canvas: React.FC<CanvasProps> = ({
       const isHovered = hoveredPointId === pt.id;
       const s = worldToScreen(pt.x, pt.y, viewport);
 
-      // Label offset positioning
-      let labelDx = 8;
-      let labelDy = -8;
-      let textAnchor: 'start' | 'middle' | 'end' = 'start';
-
-      const pos = pt.labelPos || 'auto';
-      if (pos === 'above') {
-        labelDx = 0;
-        labelDy = -12;
-        textAnchor = 'middle';
-      } else if (pos === 'below') {
-        labelDx = 0;
-        labelDy = 16;
-        textAnchor = 'middle';
-      } else if (pos === 'left') {
-        labelDx = -12;
-        labelDy = 4;
-        textAnchor = 'end';
-      } else if (pos === 'right') {
-        labelDx = 12;
-        labelDy = 4;
-        textAnchor = 'start';
-      } else if (pos === 'above left') {
-        labelDx = -10;
-        labelDy = -10;
-        textAnchor = 'end';
-      } else if (pos === 'above right' || pos === 'auto') {
-        labelDx = 10;
-        labelDy = -10;
-        textAnchor = 'start';
-      } else if (pos === 'below left') {
-        labelDx = -10;
-        labelDy = 14;
-        textAnchor = 'end';
-      } else if (pos === 'below right') {
-        labelDx = 10;
-        labelDy = 14;
-        textAnchor = 'start';
-      }
+      // Label offset positioning using custom angle and distance
+      const { angle: labelAngle, distance: labelDist } = getPointLabelAngleDistance(pt);
+      const labelAngleRad = (labelAngle * Math.PI) / 180;
+      const labelX = s.x + Math.cos(labelAngleRad) * labelDist;
+      const labelY = s.y - Math.sin(labelAngleRad) * labelDist; // trừ vì màn hình Y hướng xuống
+      const textAnchor: 'start' | 'middle' | 'end' =
+        Math.cos(labelAngleRad) > 0.3 ? 'start' : Math.cos(labelAngleRad) < -0.3 ? 'end' : 'middle';
 
       const isHidden = pt.style?.pointStyle === 'hidden';
       const pointOpacity = pt.hidden ? 0.35 : 1;
@@ -2728,23 +2732,38 @@ export const Canvas: React.FC<CanvasProps> = ({
 
           {/* Math Label in EB Garamond Italic */}
           {pt.label && (
-            <text
-              x={s.x + labelDx}
-              y={s.y + labelDy}
-              textAnchor={textAnchor}
-              className="font-math text-[15px] font-medium fill-[#16233a] pointer-events-none select-none drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]"
-            >
-              {pt.label.includes('_') ? (
-                <>
-                  <tspan>{pt.label.split('_')[0]}</tspan>
-                  <tspan dy="3" fontSize="10px">
-                    {pt.label.split('_')[1]}
-                  </tspan>
-                </>
-              ) : (
-                pt.label
-              )}
-            </text>
+            <>
+              <text
+                x={labelX}
+                y={labelY}
+                textAnchor={textAnchor}
+                className="font-math text-[15px] font-medium fill-[#16233a] pointer-events-none select-none drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]"
+              >
+                {pt.label.includes('_') ? (
+                  <>
+                    <tspan>{pt.label.split('_')[0]}</tspan>
+                    <tspan dy="3" fontSize="10px">
+                      {pt.label.split('_')[1]}
+                    </tspan>
+                  </>
+                ) : (
+                  pt.label
+                )}
+              </text>
+              {/* Vùng bấm kéo nhãn — vòng tròn vô hình lớn hơn xung quanh vị trí nhãn */}
+              <circle
+                cx={labelX}
+                cy={labelY}
+                r={12}
+                fill="transparent"
+                className="cursor-move"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  if (activeTool !== 'select') return;
+                  setDraggingLabelPointId(pt.id);
+                }}
+              />
+            </>
           )}
         </g>
       );
