@@ -14,9 +14,71 @@ import { RightSidebar } from './components/RightSidebar';
 import { Header } from './components/Header';
 import { generatePointLabel, dist, findShapeIntersections, computeParamArcEndPoint, getEdgeByIndex, findEdgeShapeIntersections, intersectEdgeEdge } from './utils/geometry';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
+import { evaluateAllFormulas } from './utils/formulaEvaluator';
+import { FormulaPoint, FormulaVariable } from './types-formula';
 
 export default function App() {
   const svgRef = useRef<SVGSVGElement | null>(null);
+
+  useEffect(() => {
+    console.log('--- STARTING FORMULA ENGINE TEST ---');
+    const testVariables: FormulaVariable[] = [
+      { name: 'r', value: 5 }
+    ];
+
+    const testPoints: FormulaPoint[] = [
+      { id: '1', name: 'O', formula: '(0,0)', groupId: '1' },
+      { id: '2', name: 'A', formula: '(90:\\r)', groupId: '1' },
+      { id: '3', name: 'B', formula: '(-130:\\r)', groupId: '1' },
+      { id: '4', name: 'C', formula: '(-30:\\r)', groupId: '1' },
+      { id: '5', name: 'D', formula: '($(B)!(A)!(C)$)', groupId: '1' },
+      { id: '6', name: 'E', formula: '($(A)!(B)!(C)$)', groupId: '1' },
+      { id: '7', name: 'F', formula: '($(A)!(C)!(B)$)', groupId: '1' },
+      { id: '8', name: 'H', formula: 'intersection of A--D and C--F', groupId: '1' },
+      { id: '9', name: 'O1', formula: '($(O)!0.5!(H)$)', groupId: '1' },
+      { id: '10', name: 'M', formula: '($(B)!0.5!(C)$)', groupId: '1' },
+      { id: '11', name: 'P', formula: '($(A)!0.5!(C)$)', groupId: '1' },
+      { id: '12', name: 'N', formula: '($(A)!0.5!(B)$)', groupId: '1' },
+      { id: '13', name: 'K', formula: '($(H)!0.5!(A)$)', groupId: '1' },
+      { id: '14', name: 'Q', formula: '($(H)!0.5!(B)$)', groupId: '1' },
+      { id: '15', name: 'X', formula: '($(B)!0.5!(H)$)', groupId: '1' },
+      { id: '16', name: 'Y', formula: '($(C)!0.5!(H)$)', groupId: '1' },
+      { id: '17', name: 'G', formula: '($(A)!0.66667!(M)$)', groupId: '1' },
+      { id: '18', name: 'mHD', formula: '($(H)!0.5!(D)$)', groupId: '1' },
+    ];
+
+    const result = evaluateAllFormulas(testPoints, testVariables);
+    console.log('Formula Engine Evaluation Result:', result);
+    
+    if (result.errors.length > 0) {
+      console.error('Formula Engine Errors:', result.errors);
+    } else {
+      console.log('Evaluated Coordinates Map:');
+      result.points.forEach((pt, name) => {
+        console.log(`Point ${name}: (${pt.x.toFixed(4)}, ${pt.y.toFixed(4)})`);
+      });
+
+      // Verification
+      const ptO = result.points.get('O');
+      const ptA = result.points.get('A');
+      const ptB = result.points.get('B');
+      const ptC = result.points.get('C');
+
+      if (ptO && ptA && ptB && ptC) {
+        const distOA = dist(ptO, ptA);
+        const distOB = dist(ptO, ptB);
+        const distOC = dist(ptO, ptC);
+
+        console.log('--- VERIFICATION ---');
+        console.log('Kiểm tra: khoảng cách O-A, O-B, O-C phải xấp xỉ 5');
+        console.log(`O-A: ${distOA.toFixed(4)} (Xấp xỉ 5: ${Math.abs(distOA - 5) < 1e-3 ? 'ĐÚNG' : 'SAI'})`);
+        console.log(`O-B: ${distOB.toFixed(4)} (Xấp xỉ 5: ${Math.abs(distOB - 5) < 1e-3 ? 'ĐÚNG' : 'SAI'})`);
+        console.log(`O-C: ${distOC.toFixed(4)} (Xấp xỉ 5: ${Math.abs(distOC - 5) < 1e-3 ? 'ĐÚNG' : 'SAI'})`);
+        console.log('--------------------');
+      }
+    }
+    console.log('--- END OF FORMULA ENGINE TEST ---');
+  }, []);
 
   const [points, setPoints] = useState<GeoPoint[]>([]);
   const [shapes, setShapes] = useState<GeoShape[]>([]);
