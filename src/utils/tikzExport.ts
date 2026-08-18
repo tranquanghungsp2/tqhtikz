@@ -768,42 +768,20 @@ export function generateTikZCodeWithLineMap(
     }
   }
 
-  // Thêm ký hiệu góc vuông (Right Angle Marks) — gom theo bán kính angleRadiusMm
+  // Thêm ký hiệu góc vuông (Right Angle Marks)
   const rightAngleMarks = options.rightAngleMarks;
   if (rightAngleMarks && rightAngleMarks.length > 0) {
-    const groupedByRadius = new Map<number, RightAngleMark[]>();
+    lines.push('');
+    lines.push('  % --- Ký hiệu góc vuông ---');
     rightAngleMarks.forEach((mark) => {
-      const r = Math.round((mark.angleRadiusMm ?? 2.5) * 10) / 10;
-      const arr = groupedByRadius.get(r) || [];
-      arr.push(mark);
-      groupedByRadius.set(r, arr);
+      const p1 = pointsMap.get(mark.point1Id);
+      const vertex = pointsMap.get(mark.vertexId);
+      const p2 = pointsMap.get(mark.point2Id);
+      if (p1 && vertex && p2) {
+        const r = formatNumber(mark.angleRadiusMm ?? 2.5);
+        lines.push(`  \\draw pic[draw,angle radius=${r}mm]{right angle=${coordFor(p1)}--${coordFor(vertex)}--${coordFor(p2)}};`);
+      }
     });
-
-    if (groupedByRadius.size > 0) {
-      lines.push('');
-      lines.push('  % --- Ký hiệu góc vuông ---');
-      Array.from(groupedByRadius.entries())
-        .sort((a, b) => a[0] - b[0])
-        .forEach(([radiusMm, marksInGroup]) => {
-          const triples = marksInGroup
-            .map((mark) => {
-              const p1 = pointsMap.get(mark.point1Id);
-              const v = pointsMap.get(mark.vertexId);
-              const p2 = pointsMap.get(mark.point2Id);
-              if (!p1 || !v || !p2) return null;
-              return `${getTikZCoordName(p1)}/${getTikZCoordName(v)}/${getTikZCoordName(p2)}`;
-            })
-            .filter(Boolean);
-
-          if (triples.length > 0) {
-            lines.push(`  \\foreach \\x/\\y/\\z in{`);
-            lines.push(`    ${triples.join(',')}`);
-            lines.push(`  }{`);
-            lines.push(`    \\draw pic[draw,angle radius=${formatNumber(radiusMm)}mm]{right angle=\\x--\\y--\\z};`);
-            lines.push(`  }`);
-          }
-        });
-    }
   }
 
   // Thêm nhãn ghi chú (Path Annotations) gom vào một lệnh \path
