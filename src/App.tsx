@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   GeoPoint,
   GeoShape,
@@ -15,7 +15,9 @@ import { Header } from './components/Header';
 import { generatePointLabel, dist, findShapeIntersections, computeParamArcEndPoint, getEdgeByIndex, findEdgeShapeIntersections, intersectEdgeEdge } from './utils/geometry';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
 import { evaluateAllFormulas } from './utils/formulaEvaluator';
-import { FormulaPoint, FormulaVariable } from './types-formula';
+import { FormulaPoint, FormulaVariable, FormulaPathGroup } from './types-formula';
+import { FormulaPanel } from './components/FormulaPanel';
+import { FormulaCanvas } from './components/FormulaCanvas';
 
 export default function App() {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -108,6 +110,22 @@ export default function App() {
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<ToolType>('select');
+
+  const [formulaMode, setFormulaMode] = useState(false);
+  const [formulaPoints, setFormulaPoints] = useState<FormulaPoint[]>([
+    { id: '1', name: 'O', formula: '(0,0)', groupId: 'g1' },
+  ]);
+  const [formulaVariables, setFormulaVariables] = useState<FormulaVariable[]>([
+    { name: 'r', value: 5, min: 0.5, max: 15 },
+  ]);
+  const [formulaGroups, setFormulaGroups] = useState<FormulaPathGroup[]>([
+    { id: 'g1', name: 'Nhóm 1', order: 0 },
+  ]);
+
+  const formulaResult = useMemo(
+    () => evaluateAllFormulas(formulaPoints, formulaVariables),
+    [formulaPoints, formulaVariables]
+  );
 
   // Multi-step tool configurations
   const [polygonSides, setPolygonSides] = useState<number>(5);
@@ -860,6 +878,8 @@ export default function App() {
         shapes={shapes}
         pointCounter={pointCounter}
         bgImage={bgImage}
+        formulaMode={formulaMode}
+        onToggleFormulaMode={() => setFormulaMode((v) => !v)}
         onLoadDrawing={(loadedPoints, loadedShapes, loadedPointCounter, loadedBgImage) => {
           setPoints(loadedPoints);
           setShapes(loadedShapes);
@@ -884,114 +904,133 @@ export default function App() {
 
       {/* Main 3-Column Studio Workspace */}
       <main className="flex-1 flex flex-row overflow-hidden relative">
-        {/* Column 1: Left Toolbar (~226px) */}
-        <Toolbar
-          activeTool={activeTool}
-          onSelectTool={(tool) => {
-            setActiveTool(tool);
-            if (tool !== 'select' && tool !== 'move_background') {
-              setSelectedPointId(null);
-              setSelectedShapeId(null);
-            }
-          }}
-          settings={settings}
-          onUpdateSettings={(newSet) => setSettings((prev) => ({ ...prev, ...newSet }))}
-          canUndo={undoStack.length > 0}
-          canRedo={redoStack.length > 0}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          onClearAll={() => setShowClearModal(true)}
-          polygonSides={polygonSides}
-          onChangePolygonSides={setPolygonSides}
-          rectangleMode={rectangleMode}
-          onChangeRectangleMode={setRectangleMode}
-          bezierSegments={bezierSegments}
-          onChangeBezierSegments={setBezierSegments}
-          bezierClosed={bezierClosed}
-          onToggleBezierClosed={() => setBezierClosed(!bezierClosed)}
-          polylineStepCount={polylinePoints.length}
-          onFinishPolyline={handleFinishPolyline}
-          paramArcStartPointId={paramArcStartPointId}
-          arcStartAngle={arcStartAngle}
-          onChangeArcStartAngle={setArcStartAngle}
-          arcEndAngle={arcEndAngle}
-          onChangeArcEndAngle={setArcEndAngle}
-          arcRadius={arcRadius}
-          onChangeArcRadius={(v) => {
-            setArcRadius(v);
-            setArcRadiusSource(null);
-          }}
-          onFinishParamArc={handleFinishParamArc}
-          pickingArcRadius={pickingArcRadius}
-          onTogglePickingArcRadius={() => setPickingArcRadius((v) => !v)}
-          radiusPickPoints={radiusPickPoints}
-          onApplyRadiusFromPoints={handleApplyRadiusFromPoints}
-          onCancelRadiusPick={handleCancelRadiusPick}
-          bgImage={bgImage}
-          onUpdateBgImage={setBgImage}
-        />
+        {formulaMode ? (
+          <>
+            {/* Column 1: Formula Panel (~420px) */}
+            <FormulaPanel
+              points={formulaPoints}
+              onUpdatePoints={setFormulaPoints}
+              variables={formulaVariables}
+              onUpdateVariables={setFormulaVariables}
+              groups={formulaGroups}
+              onUpdateGroups={setFormulaGroups}
+              evalResult={formulaResult}
+            />
+            {/* Column 2: Formula Canvas */}
+            <FormulaCanvas points={formulaPoints} evalResult={formulaResult} />
+          </>
+        ) : (
+          <>
+            {/* Column 1: Left Toolbar (~226px) */}
+            <Toolbar
+              activeTool={activeTool}
+              onSelectTool={(tool) => {
+                setActiveTool(tool);
+                if (tool !== 'select' && tool !== 'move_background') {
+                  setSelectedPointId(null);
+                  setSelectedShapeId(null);
+                }
+              }}
+              settings={settings}
+              onUpdateSettings={(newSet) => setSettings((prev) => ({ ...prev, ...newSet }))}
+              canUndo={undoStack.length > 0}
+              canRedo={redoStack.length > 0}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onClearAll={() => setShowClearModal(true)}
+              polygonSides={polygonSides}
+              onChangePolygonSides={setPolygonSides}
+              rectangleMode={rectangleMode}
+              onChangeRectangleMode={setRectangleMode}
+              bezierSegments={bezierSegments}
+              onChangeBezierSegments={setBezierSegments}
+              bezierClosed={bezierClosed}
+              onToggleBezierClosed={() => setBezierClosed(!bezierClosed)}
+              polylineStepCount={polylinePoints.length}
+              onFinishPolyline={handleFinishPolyline}
+              paramArcStartPointId={paramArcStartPointId}
+              arcStartAngle={arcStartAngle}
+              onChangeArcStartAngle={setArcStartAngle}
+              arcEndAngle={arcEndAngle}
+              onChangeArcEndAngle={setArcEndAngle}
+              arcRadius={arcRadius}
+              onChangeArcRadius={(v) => {
+                setArcRadius(v);
+                setArcRadiusSource(null);
+              }}
+              onFinishParamArc={handleFinishParamArc}
+              pickingArcRadius={pickingArcRadius}
+              onTogglePickingArcRadius={() => setPickingArcRadius((v) => !v)}
+              radiusPickPoints={radiusPickPoints}
+              onApplyRadiusFromPoints={handleApplyRadiusFromPoints}
+              onCancelRadiusPick={handleCancelRadiusPick}
+              bgImage={bgImage}
+              onUpdateBgImage={setBgImage}
+            />
 
-        {/* Column 2: Middle Canvas Area */}
-        <Canvas
-          points={points}
-          shapes={shapes}
-          selectedPointId={selectedPointId}
-          selectedShapeId={selectedShapeId}
-          activeTool={activeTool}
-          settings={settings}
-          polygonSides={polygonSides}
-          rectangleMode={rectangleMode}
-          bezierSegments={bezierSegments}
-          bezierClosed={bezierClosed}
-          paramArcStartPointId={paramArcStartPointId}
-          onSetParamArcStartPointId={setParamArcStartPointId}
-          arcStartAngle={arcStartAngle}
-          arcEndAngle={arcEndAngle}
-          arcRadius={arcRadius}
-          pickingArcRadius={pickingArcRadius}
-          radiusPickPoints={radiusPickPoints}
-          onSetRadiusPickPoints={setRadiusPickPoints}
-          onSelectPoint={setSelectedPointId}
-          onSelectShape={setSelectedShapeId}
-          onSelectTool={(tool) => {
-            setActiveTool(tool);
-            if (tool !== 'select' && tool !== 'move_background') {
-              setSelectedPointId(null);
-              setSelectedShapeId(null);
-            }
-          }}
-          onAddPoint={handleAddPoint}
-          onUpdatePointCoord={handleUpdatePointCoord}
-          onAddShape={handleAddShape}
-          onUpdateShape={handleUpdateShape}
-          nextPointLabel={nextPointLabel}
-          svgRef={svgRef}
-          polylinePoints={polylinePoints}
-          onSetPolylinePoints={setPolylinePoints}
-          onFinishPolyline={handleFinishPolyline}
-          bgImage={bgImage}
-          onUpdateBgImage={setBgImage}
-        />
+            {/* Column 2: Middle Canvas Area */}
+            <Canvas
+              points={points}
+              shapes={shapes}
+              selectedPointId={selectedPointId}
+              selectedShapeId={selectedShapeId}
+              activeTool={activeTool}
+              settings={settings}
+              polygonSides={polygonSides}
+              rectangleMode={rectangleMode}
+              bezierSegments={bezierSegments}
+              bezierClosed={bezierClosed}
+              paramArcStartPointId={paramArcStartPointId}
+              onSetParamArcStartPointId={setParamArcStartPointId}
+              arcStartAngle={arcStartAngle}
+              arcEndAngle={arcEndAngle}
+              arcRadius={arcRadius}
+              pickingArcRadius={pickingArcRadius}
+              radiusPickPoints={radiusPickPoints}
+              onSetRadiusPickPoints={setRadiusPickPoints}
+              onSelectPoint={setSelectedPointId}
+              onSelectShape={setSelectedShapeId}
+              onSelectTool={(tool) => {
+                setActiveTool(tool);
+                if (tool !== 'select' && tool !== 'move_background') {
+                  setSelectedPointId(null);
+                  setSelectedShapeId(null);
+                }
+              }}
+              onAddPoint={handleAddPoint}
+              onUpdatePointCoord={handleUpdatePointCoord}
+              onAddShape={handleAddShape}
+              onUpdateShape={handleUpdateShape}
+              nextPointLabel={nextPointLabel}
+              svgRef={svgRef}
+              polylinePoints={polylinePoints}
+              onSetPolylinePoints={setPolylinePoints}
+              onFinishPolyline={handleFinishPolyline}
+              bgImage={bgImage}
+              onUpdateBgImage={setBgImage}
+            />
 
-        {/* Column 3: Right Sidebar (~330px) */}
-        <RightSidebar
-          selectedPoint={selectedPoint}
-          selectedShape={selectedShape}
-          points={points}
-          shapes={shapes}
-          onUpdatePoint={handleUpdatePoint}
-          onUpdateShape={handleUpdateShape}
-          onDeletePoint={handleDeletePoint}
-          onDeleteShape={handleDeleteShape}
-          onUnmergeShape={handleUnmergeShape}
-          onDeselect={() => {
-            setSelectedPointId(null);
-            setSelectedShapeId(null);
-          }}
-          tikzOptions={tikzOptions}
-          onUpdateTikzOptions={(opts) => setTikzOptions((prev) => ({ ...prev, ...opts }))}
-          svgRef={svgRef}
-        />
+            {/* Column 3: Right Sidebar (~330px) */}
+            <RightSidebar
+              selectedPoint={selectedPoint}
+              selectedShape={selectedShape}
+              points={points}
+              shapes={shapes}
+              onUpdatePoint={handleUpdatePoint}
+              onUpdateShape={handleUpdateShape}
+              onDeletePoint={handleDeletePoint}
+              onDeleteShape={handleDeleteShape}
+              onUnmergeShape={handleUnmergeShape}
+              onDeselect={() => {
+                setSelectedPointId(null);
+                setSelectedShapeId(null);
+              }}
+              tikzOptions={tikzOptions}
+              onUpdateTikzOptions={(opts) => setTikzOptions((prev) => ({ ...prev, ...opts }))}
+              svgRef={svgRef}
+            />
+          </>
+        )}
       </main>
 
       {/* Clear All Confirmation Modal */}
