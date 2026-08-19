@@ -310,6 +310,11 @@ export interface AppSettings {
   showAxes: boolean;
   rulerStep: number; // in cm (1cm)
   autoLabel: boolean;
+  // 'geometry' = chế độ hình học thường (hiện tên điểm A, B, C..., dùng \coordinate khi xuất
+  // TikZ); 'tracing' = chế độ vẽ theo ảnh thực tế (ẩn hết tên điểm, xuất TikZ bằng toạ độ số
+  // trực tiếp, không khai báo tên). Tách biệt hoàn toàn với tính năng ẩn/hiện TỪNG điểm riêng
+  // lẻ (pt.hidden, nút "Ẩn/Hiện" ở Header) — 2 tính năng không ảnh hưởng lẫn nhau.
+  drawingMode: 'geometry' | 'tracing';
 }
 
 export interface TikZExportOptions {
@@ -320,6 +325,7 @@ export interface TikZExportOptions {
   useColorDefinitions: boolean;
   pathAnnotations?: PathAnnotation[];
   rightAngleMarks?: RightAngleMark[];
+  useNamedCoordinates?: boolean; // false = KHÔNG khai báo \coordinate/tên điểm, mọi hình dùng thẳng toạ độ số (mặc định true)
 }
 
 export interface RightAngleMark {
