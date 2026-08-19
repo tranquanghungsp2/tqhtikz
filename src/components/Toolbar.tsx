@@ -9,6 +9,7 @@ import {
   Unlock,
   X,
   Upload,
+  Pipette,
 } from 'lucide-react';
 import { ToolType, AppSettings, BackgroundImageState, GeoPoint } from '../types';
 import { dist, formatCm } from '../utils/geometry';
@@ -502,6 +503,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   )}
                 </button>
               </div>
+
+              <button
+                id="tool-btn-eyedropper"
+                onClick={() => onSelectTool('eyedropper')}
+                title="Nhấp vào ảnh nền để lấy mã màu tại vị trí đó"
+                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left mt-1.5 ${
+                  activeTool === 'eyedropper'
+                    ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
+                    : 'text-[#16233a] hover:bg-[#f1f5f9]'
+                }`}
+              >
+                <Pipette className="w-4 h-4 shrink-0" />
+                <span>Lấy mã màu ảnh</span>
+              </button>
 
               {/* Opacity slider */}
               <div className="space-y-1">
