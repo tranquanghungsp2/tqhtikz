@@ -4083,8 +4083,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         )}
       </svg>
 
-      {/* Top-Left Zoom Controls */}
-      <div className="absolute top-8 left-8 z-20 flex items-center bg-white/95 backdrop-blur-xs border border-[#dbe4ee] rounded-md shadow-xs p-1 space-x-1">
+      {/* Top-Left Zoom Controls — đẩy xuống thêm để không dính sát thanh công cụ ngang (GeometryToolbar) phía trên canvas */}
+      <div className="absolute top-14 left-8 z-20 flex items-center bg-white/95 backdrop-blur-xs border border-[#dbe4ee] rounded-md shadow-xs p-1 space-x-1">
         <button
           onClick={handleZoomIn}
           title="Phóng to (+)"
