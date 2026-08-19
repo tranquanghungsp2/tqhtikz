@@ -31,13 +31,19 @@ interface HeaderProps {
   bgImage: BackgroundImageState;
   pathAnnotations: PathAnnotation[];
   rightAngleMarks: RightAngleMark[];
+  currentDrawingId: string | null;
+  currentDrawingName: string | null;
+  autoSaveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  onSetCurrentDrawing: (id: string | null, name: string | null) => void;
   onLoadDrawing: (
     points: GeoPoint[],
     shapes: GeoShape[],
     pointCounter: number,
     bgImage: BackgroundImageState | null,
-    pathAnnotations?: PathAnnotation[],
-    rightAngleMarks?: RightAngleMark[]
+    pathAnnotations: PathAnnotation[] | undefined,
+    rightAngleMarks: RightAngleMark[] | undefined,
+    drawingId: string | null,
+    drawingName: string | null
   ) => void;
   formulaMode: boolean;
   onToggleFormulaMode: () => void;
@@ -51,6 +57,10 @@ export const Header: React.FC<HeaderProps> = ({
   bgImage,
   pathAnnotations,
   rightAngleMarks,
+  currentDrawingId,
+  currentDrawingName,
+  autoSaveStatus,
+  onSetCurrentDrawing,
   onLoadDrawing,
   formulaMode,
   onToggleFormulaMode,
@@ -62,8 +72,6 @@ export const Header: React.FC<HeaderProps> = ({
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
   const [savedDrawings, setSavedDrawings] = useState<SavedDrawing[]>([]);
-  const [currentDrawingId, setCurrentDrawingId] = useState<string | null>(null);
-  const [currentDrawingName, setCurrentDrawingName] = useState<string | null>(null);
   const [saveNameInput, setSaveNameInput] = useState('');
   const [busy, setBusy] = useState(false);
   const saveMenuRef = React.useRef<HTMLDivElement>(null);
@@ -114,8 +122,7 @@ export const Header: React.FC<HeaderProps> = ({
       // đầu tiên chính là bản mới nhất vừa lưu).
       const justSaved = list.find((d) => d.name === nameToSave);
       if (justSaved) {
-        setCurrentDrawingId(justSaved.id);
-        setCurrentDrawingName(justSaved.name);
+        onSetCurrentDrawing(justSaved.id, justSaved.name);
       }
     } catch (error) {
       console.error('Error saving new drawing:', error);
@@ -138,18 +145,14 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const handleLoad = (d: SavedDrawing) => {
-    onLoadDrawing(d.points, d.shapes, d.point_counter, d.background_image, d.path_annotations || [], d.right_angle_marks || []);
-    setCurrentDrawingId(d.id);
-    setCurrentDrawingName(d.name);
+    onLoadDrawing(d.points, d.shapes, d.point_counter, d.background_image, d.path_annotations || [], d.right_angle_marks || [], d.id, d.name);
     setShowSaveMenu(false);
   };
 
   // Tạo bản vẽ TRẮNG mới — xoá canvas hiện tại và quên liên kết với file đang mở, để "Ghi đè
   // bản đang mở" không lỡ tay đè lên file cũ, và để người dùng luôn biết rõ mình đang ở bản mới.
   const handleNewDrawing = () => {
-    onLoadDrawing([], [], 0, null, [], []);
-    setCurrentDrawingId(null);
-    setCurrentDrawingName(null);
+    onLoadDrawing([], [], 0, null, [], [], null, null);
     setSaveNameInput('');
     setShowSaveMenu(false);
   };
@@ -158,7 +161,7 @@ export const Header: React.FC<HeaderProps> = ({
     try {
       await deleteDrawing(id);
       setSavedDrawings(await listMyDrawings());
-      if (currentDrawingId === id) setCurrentDrawingId(null);
+      if (currentDrawingId === id) onSetCurrentDrawing(null, null);
     } catch (error) {
       console.error('Error deleting drawing:', error);
     }
@@ -218,6 +221,19 @@ export const Header: React.FC<HeaderProps> = ({
                 {user ? (currentDrawingName ? currentDrawingName : 'Lưu / Tải hình') : 'Đăng nhập để lưu'}
               </span>
             </button>
+            {currentDrawingName && autoSaveStatus !== 'idle' && (
+              <span
+                className={`ml-1.5 text-[10px] font-medium ${
+                  autoSaveStatus === 'saving'
+                    ? 'text-[#94a3b8]'
+                    : autoSaveStatus === 'saved'
+                    ? 'text-[#059669]'
+                    : 'text-[#b91c1c]'
+                }`}
+              >
+                {autoSaveStatus === 'saving' ? 'Đang lưu...' : autoSaveStatus === 'saved' ? 'Đã lưu' : 'Lỗi lưu'}
+              </span>
+            )}
 
             {showSaveMenu && user && (
               <div className="absolute top-full right-0 mt-1 w-72 bg-white border border-[#dbe4ee] rounded-lg shadow-lg py-2 z-50 px-3 space-y-2">
