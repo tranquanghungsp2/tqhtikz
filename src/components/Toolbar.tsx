@@ -1021,6 +1021,37 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
       {/* Bottom utility controls */}
       <div className="p-3 border-t border-[#dbe4ee] bg-white space-y-2.5">
+        {/* Toggle Chế độ vẽ */}
+        <div className="space-y-1.5 pb-2 border-b border-[#dbe4ee]">
+          <span className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-wider">
+            Chế độ vẽ
+          </span>
+          <div className="flex bg-[#f1f5f9] p-0.5 rounded-md">
+            <button
+              id="drawing-mode-geometry"
+              onClick={() => onUpdateSettings({ drawingMode: 'geometry' })}
+              className={`flex-1 py-1 text-center text-xs font-semibold rounded-md transition-all ${
+                settings.drawingMode === 'geometry'
+                  ? 'bg-white text-[#2f5d99] shadow-2xs'
+                  : 'text-[#5b6b82] hover:text-[#16233a]'
+              }`}
+            >
+              Hình học
+            </button>
+            <button
+              id="drawing-mode-tracing"
+              onClick={() => onUpdateSettings({ drawingMode: 'tracing' })}
+              className={`flex-1 py-1 text-center text-xs font-semibold rounded-md transition-all ${
+                settings.drawingMode === 'tracing'
+                  ? 'bg-white text-[#2f5d99] shadow-2xs'
+                  : 'text-[#5b6b82] hover:text-[#16233a]'
+              }`}
+            >
+              Đồ hình (Tracing)
+            </button>
+          </div>
+        </div>
+
         <label className="flex items-center gap-2 text-xs text-[#5b6b82] cursor-pointer hover:text-[#16233a] select-none">
           <input
             id="toggle-grid-checkbox"
