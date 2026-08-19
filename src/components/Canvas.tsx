@@ -1706,18 +1706,51 @@ export const Canvas: React.FC<CanvasProps> = ({
         const pt = getOrCreatePointOnLine(sx, sy, wx, wy);
         setTempPoints([pt]);
       } else {
-        // Bước 3: chốt điểm cuối (đã chiếu song song)
+        // Bước 3: chốt điểm cuối.
         const through = tempPoints[0];
+        const refDx = refPts.p2.x - refPts.p1.x;
+        const refDy = refPts.p2.y - refPts.p1.y;
+        const refLen = Math.hypot(refDx, refDy) || 1;
+        const dirPar = { x: refDx / refLen, y: refDy / refLen };
         const endCoord = computeParallelEndPoint(refPts.p1, refPts.p2, through, { x: wx, y: wy });
-        const endPt: GeoPoint = {
-          id: `p_${Date.now()}_par`,
-          label: nextPointLabel,
-          x: endCoord.x,
-          y: endCoord.y,
-          labelPos: 'auto',
-          style: { color: '#16233a', pointStyle: 'dot' },
-        };
-        onAddPoint(endPt);
+
+        // Nếu bấm gần 1 ĐIỂM có sẵn — dùng luôn điểm đó. Nếu không trúng điểm nhưng gần
+        // 1 ĐƯỜNG có sẵn khác (VD: LJ) — điểm cuối phải thoả ĐỒNG THỜI 2 ràng buộc: song song
+        // với đường chuẩn VÀ nằm trên đường vừa bắt được — vị trí đúng là GIAO ĐIỂM giữa tia
+        // song song (qua "through", hướng dirPar) và đường đó, và điểm này bị RÀNG BUỘC luôn
+        // (không kéo tự do được nữa), y hệt cách đã làm cho tool "Vuông góc".
+        const nearestExisting = findNearestPoint(sx, sy, points, viewport, 12);
+        let endPt: GeoPoint;
+        if (nearestExisting) {
+          endPt = nearestExisting;
+        } else {
+          const hit = findLineForConstrainedPoint(sx, sy);
+          if (hit) {
+            const targetInfo = resolveLineAnchorDirForShape(hit.shapeId, hit.edgeIndex, pointsMap, shapes);
+            const inter = targetInfo ? intersectTwoLines(through, dirPar, targetInfo.anchor, targetInfo.dir) : null;
+            const finalPos = inter ?? { x: hit.x, y: hit.y };
+            endPt = {
+              id: `p_${Date.now()}_par`,
+              label: nextPointLabel,
+              x: finalPos.x,
+              y: finalPos.y,
+              labelPos: 'auto',
+              style: { color: '#f59e0b', pointStyle: 'dot' },
+              derivedFrom: { type: 'perpEndOnLine', targetShapeId: hit.shapeId, targetEdgeIndex: hit.edgeIndex },
+            };
+          } else {
+            endPt = {
+              id: `p_${Date.now()}_par`,
+              label: nextPointLabel,
+              x: endCoord.x,
+              y: endCoord.y,
+              labelPos: 'auto',
+              style: { color: '#16233a', pointStyle: 'dot' },
+            };
+          }
+          onAddPoint(endPt);
+        }
+
         const newShape: GeoShape = {
           id: `s_par_${Date.now()}`,
           type: 'parallel_line',
