@@ -22,6 +22,51 @@ import { FormulaPanel } from './components/FormulaPanel';
 import { FormulaCanvas } from './components/FormulaCanvas';
 import { VisibilityManager } from './components/VisibilityManager';
 
+// Giao điểm của 2 đường THẲNG (không giới hạn đoạn) — dùng để tính đúng vị trí điểm cuối
+// của 1 đường song song/vuông góc khi nó còn bị ép buộc nằm trên 1 đường khác cùng lúc.
+function lineLineIntersection(
+  p1: { x: number; y: number },
+  dir1: { x: number; y: number },
+  p2: { x: number; y: number },
+  dir2: { x: number; y: number }
+): { x: number; y: number } | null {
+  const denom = dir1.x * dir2.y - dir1.y * dir2.x;
+  if (Math.abs(denom) < 1e-9) return null; // song song, không có giao điểm duy nhất
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const t = (dx * dir2.y - dy * dir2.x) / denom;
+  return { x: p1.x + t * dir1.x, y: p1.y + t * dir1.y };
+}
+
+// Lấy 1 điểm neo + vector hướng của 1 đường/cạnh bất kỳ (segment, parallel_line,
+// perpendicular_line, hoặc 1 cạnh cụ thể của HCN/hình vuông/đường gấp khúc).
+function resolveLineAnchorDir(
+  shapeId: string,
+  edgeIndex: number | undefined,
+  pMap: Map<string, GeoPoint>,
+  currentShapes: GeoShape[]
+): { anchor: { x: number; y: number }; dir: { x: number; y: number } } | null {
+  const shape = currentShapes.find((s) => s.id === shapeId);
+  if (!shape) return null;
+  let a: { x: number; y: number } | undefined;
+  let b: { x: number; y: number } | undefined;
+  if (edgeIndex !== undefined) {
+    const edge = getEdgeByIndex(shape, edgeIndex, pMap);
+    if (edge) {
+      a = edge.p1;
+      b = edge.p2;
+    }
+  } else if (shape.type === 'segment') {
+    a = pMap.get(shape.pointIds[0]);
+    b = pMap.get(shape.pointIds[1]);
+  } else if (shape.type === 'parallel_line' || shape.type === 'perpendicular_line') {
+    a = pMap.get(shape.throughPointId);
+    b = pMap.get(shape.endPointId);
+  }
+  if (!a || !b) return null;
+  return { anchor: a, dir: { x: b.x - a.x, y: b.y - a.y } };
+}
+
 export default function App() {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -350,6 +395,28 @@ export default function App() {
             const vy = dirX;
             dirX = vx;
             dirY = vy;
+          }
+
+          // Nếu điểm cuối này ĐỒNG THỜI bị ép buộc nằm trên 1 đường khác (derivedFrom.type
+          // === 'perpEndOnLine'), vị trí đúng phải là GIAO ĐIỂM giữa tia song song/vuông góc
+          // (qua "through", hướng dirX/dirY) và đường mục tiêu đó — không dùng cách "giữ
+          // nguyên độ dài cũ" như mặc định bên dưới.
+          if (oldEnd.derivedFrom?.type === 'perpEndOnLine') {
+            const target = resolveLineAnchorDir(
+              oldEnd.derivedFrom.targetShapeId,
+              oldEnd.derivedFrom.targetEdgeIndex,
+              pMap,
+              currentShapes
+            );
+            if (target) {
+              const inter = lineLineIntersection(through, { x: dirX, y: dirY }, target.anchor, target.dir);
+              if (inter && (Math.abs(inter.x - oldEnd.x) > 1e-6 || Math.abs(inter.y - oldEnd.y) > 1e-6)) {
+                const updatedEnd = { ...oldEnd, x: inter.x, y: inter.y };
+                pMap.set(oldEnd.id, updatedEnd);
+                workingPoints = workingPoints.map((p) => (p.id === oldEnd.id ? updatedEnd : p));
+              }
+            }
+            continue;
           }
 
           const currentLen = dist(through, oldEnd) || 1;
