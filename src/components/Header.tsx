@@ -63,8 +63,22 @@ export const Header: React.FC<HeaderProps> = ({
   const [showSaveMenu, setShowSaveMenu] = useState(false);
   const [savedDrawings, setSavedDrawings] = useState<SavedDrawing[]>([]);
   const [currentDrawingId, setCurrentDrawingId] = useState<string | null>(null);
+  const [currentDrawingName, setCurrentDrawingName] = useState<string | null>(null);
   const [saveNameInput, setSaveNameInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const saveMenuRef = React.useRef<HTMLDivElement>(null);
+
+  // Bấm ra ngoài khu vực dropdown Lưu/Tải thì tự đóng, không cần bấm lại đúng nút mới đóng được.
+  React.useEffect(() => {
+    if (!showSaveMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (saveMenuRef.current && !saveMenuRef.current.contains(e.target as Node)) {
+        setShowSaveMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSaveMenu]);
 
   const openSaveMenu = async () => {
     if (!user) {
@@ -88,11 +102,21 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleSaveNew = async () => {
     if (!saveNameInput.trim()) return;
+    const nameToSave = saveNameInput.trim();
     setBusy(true);
     try {
-      await saveNewDrawing(saveNameInput.trim(), points, shapes, pointCounter, bgImage, pathAnnotations, rightAngleMarks);
+      await saveNewDrawing(nameToSave, points, shapes, pointCounter, bgImage, pathAnnotations, rightAngleMarks);
       setSaveNameInput('');
-      setSavedDrawings(await listMyDrawings());
+      const list = await listMyDrawings();
+      setSavedDrawings(list);
+      // Sau khi lưu mới, coi đây là bản đang mở (để lần sau "Ghi đè" đúng vào bản này) —
+      // tìm lại đúng bản vừa tạo bằng tên (list đã sắp theo updated_at giảm dần nên khớp tên
+      // đầu tiên chính là bản mới nhất vừa lưu).
+      const justSaved = list.find((d) => d.name === nameToSave);
+      if (justSaved) {
+        setCurrentDrawingId(justSaved.id);
+        setCurrentDrawingName(justSaved.name);
+      }
     } catch (error) {
       console.error('Error saving new drawing:', error);
     } finally {
@@ -116,6 +140,17 @@ export const Header: React.FC<HeaderProps> = ({
   const handleLoad = (d: SavedDrawing) => {
     onLoadDrawing(d.points, d.shapes, d.point_counter, d.background_image, d.path_annotations || [], d.right_angle_marks || []);
     setCurrentDrawingId(d.id);
+    setCurrentDrawingName(d.name);
+    setShowSaveMenu(false);
+  };
+
+  // Tạo bản vẽ TRẮNG mới — xoá canvas hiện tại và quên liên kết với file đang mở, để "Ghi đè
+  // bản đang mở" không lỡ tay đè lên file cũ, và để người dùng luôn biết rõ mình đang ở bản mới.
+  const handleNewDrawing = () => {
+    onLoadDrawing([], [], 0, null, [], []);
+    setCurrentDrawingId(null);
+    setCurrentDrawingName(null);
+    setSaveNameInput('');
     setShowSaveMenu(false);
   };
 
@@ -167,18 +202,21 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Lưu / Tải hình vẽ */}
         {isSupabaseConfigured && (
-          <div className="relative">
+          <div className="relative" ref={saveMenuRef}>
             <button
               onClick={openSaveMenu}
               disabled={loading || busy}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-[#f8fafc] hover:bg-[#eef2f6] text-[#16233a] border border-[#dbe4ee] rounded-md transition-colors shadow-2xs disabled:opacity-50"
+              title={currentDrawingName ? `Đang sửa: ${currentDrawingName}` : undefined}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-[#f8fafc] hover:bg-[#eef2f6] text-[#16233a] border border-[#dbe4ee] rounded-md transition-colors shadow-2xs disabled:opacity-50 max-w-[180px]"
             >
               {user ? (
-                <FolderOpen className="w-3.5 h-3.5 text-[#2f5d99]" />
+                <FolderOpen className="w-3.5 h-3.5 text-[#2f5d99] shrink-0" />
               ) : (
-                <LogIn className="w-3.5 h-3.5 text-[#2f5d99]" />
+                <LogIn className="w-3.5 h-3.5 text-[#2f5d99] shrink-0" />
               )}
-              <span>{user ? 'Lưu / Tải hình' : 'Đăng nhập để lưu'}</span>
+              <span className="truncate">
+                {user ? (currentDrawingName ? currentDrawingName : 'Lưu / Tải hình') : 'Đăng nhập để lưu'}
+              </span>
             </button>
 
             {showSaveMenu && user && (
@@ -206,6 +244,20 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 ) : (
                   <>
+                    {currentDrawingName && (
+                      <div className="text-[11px] text-[#5b6b82] px-1 flex items-center justify-between">
+                        <span className="truncate">
+                          Đang sửa: <span className="font-semibold text-[#16233a]">{currentDrawingName}</span>
+                        </span>
+                      </div>
+                    )}
+                    <button
+                      onClick={handleNewDrawing}
+                      className="w-full text-[11px] font-medium text-[#2f5d99] bg-white border border-dashed border-[#2f5d99]/50 hover:bg-[#f0f4fa] px-2 py-1.5 rounded transition-colors"
+                    >
+                      + Tạo bản vẽ mới (xoá canvas hiện tại)
+                    </button>
+
                     <div className="flex gap-1.5">
                       <input
                         type="text"
