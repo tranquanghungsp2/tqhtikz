@@ -402,38 +402,75 @@ export const Header: React.FC<HeaderProps> = ({
                 <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
                   <li>Chọn công cụ ở thanh trái, nhấp lên canvas theo hướng dẫn hiện ở góc dưới trái màn hình.</li>
                   <li>Nhấp vào 1 điểm/cạnh có sẵn để dùng lại, thay vì tạo điểm mới trùng vị trí.</li>
-                  <li>Bấm vào cạnh của hình chữ nhật/đường gấp khúc/đoạn thẳng khi đang đặt điểm sẽ tự tạo điểm luôn nằm ràng buộc trên cạnh đó.</li>
+                  <li>Bấm vào cạnh của hình chữ nhật, hình vuông, đường gấp khúc, đoạn thẳng, đường song song/vuông góc khi đang đặt điểm (ở bất kỳ công cụ nào — Điểm, Đoạn thẳng, Đường tròn...) sẽ tự tạo điểm luôn nằm ràng buộc (màu cam) trên đúng cạnh đó, kéo cạnh thì điểm tự trượt theo. Riêng cạnh Bezier chưa hỗ trợ.</li>
+                  <li>Dùng công cụ "Điểm" bấm gần chỗ 2 đường/hình cắt nhau (dù chưa có điểm nào ở đó) sẽ tự tạo điểm giao điểm thật (màu đỏ), kéo 1 trong 2 đường gốc thì điểm tự cập nhật theo.</li>
                 </ul>
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">2. Nhãn &amp; ký hiệu</h4>
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">2. Giữ Shift để khoá góc 0°/90°/180°/270°</h4>
                 <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
-                  <li><span className="font-medium text-[#16233a]">Nhãn đoạn thẳng / Nhãn góc:</span> chọn điểm xong sẽ hiện hộp nhập nội dung LaTeX (VD: <code>$7\,m$</code>), gõ xong Enter để tạo.</li>
-                  <li><span className="font-medium text-[#16233a]">Ký hiệu góc vuông:</span> chọn 3 điểm (đầu — đỉnh — cuối), chỉnh bán kính trong panel bên phải.</li>
-                  <li><span className="font-medium text-[#16233a]">Điểm neo (pic anchor):</span> nhấp vào 1 điểm có sẵn để đặt tên neo, dùng khi xuất bản vẽ dạng <code>pic</code> tái sử dụng.</li>
+                  <li>Đang vẽ đoạn thẳng/đường gấp khúc, giữ Shift khi rê chuột chọn điểm tiếp theo — nếu góc đang gần ngang/dọc (trong khoảng ±5°) sẽ tự bẻ về đúng chuẩn, đường preview chuyển màu xanh lục để báo đang khoá.</li>
+                  <li>Khi đóng kín đường gấp khúc (bấm lại điểm đầu) mà giữ Shift, cạnh cuối cùng cũng được khoá góc tương tự.</li>
+                  <li>Dùng công cụ "Chọn" giữ Shift kéo 1 điểm đã có sẵn: nếu điểm đó nối với 1 cạnh đang gần chuẩn, cạnh đó sẽ tự khoá góc trong lúc kéo (chỉ đổi độ dài, không đổi hướng). Nếu điểm nối với 2 cạnh (đỉnh giữa đa giác) mà cả 2 cạnh cùng lúc gần chuẩn, điểm sẽ tự nằm đúng tại giao điểm của cả 2 đường chuẩn đó (ví dụ giữ đúng góc vuông tại 1 đỉnh hình thang vuông khi kéo đỉnh đó).</li>
                 </ul>
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">3. Chế độ vẽ</h4>
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">3. Đường song song / vuông góc</h4>
+                <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
+                  <li>Bước 1 chọn đường chuẩn: có thể chọn cả 1 cạnh cụ thể của hình chữ nhật/đường gấp khúc, không chỉ đoạn thẳng đơn.</li>
+                  <li>Bước 3 chốt điểm cuối: nếu bấm gần 1 điểm/đường có sẵn khác, điểm cuối sẽ tự ràng buộc thoả đồng thời cả 2 điều kiện (song song/vuông góc VÀ nằm trên đường đó) — không kéo tự do được nữa, tự cập nhật khi kéo 1 trong 2 đường liên quan.</li>
+                  <li>Với công cụ Vuông góc: nếu chọn điểm "đi qua" là 1 điểm KHÔNG nằm trên đường chuẩn (VD: kẻ đường cao từ 1 đỉnh xuống cạnh đối diện), app tự động vẽ luôn đoạn vuông góc chạm đúng xuống đường chuẩn, không cần thao tác thêm bước 3. Ký hiệu góc vuông sẽ tự vẽ đúng tại điểm chạm.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">4. Nhãn &amp; ký hiệu</h4>
+                <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
+                  <li><span className="font-medium text-[#16233a]">Nhãn đoạn thẳng / Nhãn góc-lệch tâm:</span> chọn điểm xong sẽ hiện hộp nhập nội dung LaTeX (VD: <code>$7\,m$</code>, <code>$30^\circ$</code>), gõ xong Enter để tạo, Esc để huỷ. Nhãn được render bằng KaTeX (LaTeX thật) ngay trên canvas, đúng như trong PDF.</li>
+                  <li><span className="font-medium text-[#16233a]">Ký hiệu góc vuông:</span> chọn 3 điểm theo thứ tự (đầu — đỉnh — cuối), chỉnh bán kính (mm) trong panel bên phải khi đã chọn ký hiệu. Mỗi ký hiệu xuất ra 1 dòng <code>\draw pic[...]{'{'}right angle=X--Y--Z{'}'};</code> độc lập.</li>
+                  <li><span className="font-medium text-[#16233a]">Nhãn điểm (A, B, C...):</span> kéo trực tiếp chữ nhãn quanh điểm để đổi góc đặt nhãn; khoảng cách nhãn dùng CHUNG cho mọi điểm, chỉnh 1 lần ở slider trong Toolbar, áp dụng đồng loạt.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">5. Điểm neo &amp; xuất dạng pic</h4>
+                <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
+                  <li>Công cụ "Điểm neo": nhấp vào 1 điểm có sẵn, đặt tên (VD: <code>dinh</code>, <code>chan</code>) — điểm đó sẽ có viền hình thoi tím đánh dấu.</li>
+                  <li>Trong tab Mã TikZ, tick "Xuất dạng pic", đặt tên pic (VD: <code>tree</code>) — mã sẽ đổi thành khối <code>{'\tikzset{ pics/<tên>/.style={code={...}} }'}</code> kèm các dòng <code>{'\coordinate (-tên_neo) at (...);'}</code>, dùng lại được ở bất kỳ đâu bằng <code>{'\pic at (x,y) {<tên>};'}</code>.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">6. Chế độ vẽ &amp; ẩn/hiện</h4>
                 <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
                   <li><span className="font-medium text-[#16233a]">Hình học:</span> hiện tên điểm A, B, C..., mã TikZ dùng <code>\coordinate</code> có tên.</li>
-                  <li><span className="font-medium text-[#16233a]">Vẽ theo ảnh thực:</span> ẩn hết tên điểm, mã TikZ dùng thẳng toạ độ số — phù hợp khi đồ hình theo ảnh nền.</li>
+                  <li><span className="font-medium text-[#16233a]">Vẽ theo ảnh thực:</span> ẩn hết tên điểm trên canvas LẪN trong mã TikZ (không khai báo <code>\coordinate</code> nào), mọi hình dùng thẳng toạ độ số — phù hợp khi đồ hình theo ảnh nền, chỉ cần đúng vị trí, không cần tên.</li>
+                  <li>Công cụ "Ẩn/Hiện" (chọn từng điểm/hình riêng lẻ để loại khỏi mã xuất, vẫn hiện mờ trên canvas) là tính năng KHÁC, độc lập hoàn toàn với 2 chế độ vẽ trên, không xung đột nhau.</li>
                 </ul>
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">4. Lưu &amp; tải</h4>
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">7. Lưu, tải &amp; tự động lưu</h4>
                 <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
-                  <li>Đăng nhập rồi bấm "Lưu / Tải hình" để lưu bản vẽ lên tài khoản.</li>
-                  <li>Khi đang mở 1 bản vẽ đã lưu, mọi thay đổi sẽ <span className="font-medium text-[#16233a]">tự động lưu</span> sau ~2.5 giây ngừng thao tác (xem trạng thái ở giữa thanh trên cùng).</li>
+                  <li>Đăng nhập rồi bấm "Lưu / Tải hình" để lưu bản vẽ lên tài khoản, hoặc mở lại bản đã lưu trước đó.</li>
+                  <li>Khi đang mở 1 bản vẽ đã lưu (nút hiện đúng tên file), mọi thay đổi sẽ <span className="font-medium text-[#16233a]">tự động lưu</span> sau ~2.5 giây ngừng thao tác — xem trạng thái "Đang lưu.../Đã lưu/Lỗi lưu" hiện thoáng qua ở chính giữa thanh trên cùng.</li>
                   <li>Bấm "+ Tạo bản vẽ mới" trong menu Lưu/Tải để bắt đầu 1 canvas trắng, không ảnh hưởng file đang mở.</li>
                 </ul>
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">5. Phím tắt bàn phím</h4>
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">8. Sao chép mã TikZ</h4>
+                <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
+                  <li>Nút "Sao chép" ở góc khối mã: copy TOÀN BỘ mã, giữ nguyên thụt lề gốc.</li>
+                  <li>Icon copy nhỏ bên phải mỗi dòng: copy đúng 1 dòng, tự động bỏ thụt lề thừa (paste ra ngoài không bị lệch cột).</li>
+                  <li>Giữ Shift rồi bấm dòng thứ 2: copy nguyên cả khối từ dòng bấm lần đầu đến dòng đó, cũng tự bỏ phần thụt lề chung dư thừa nhưng vẫn giữ đúng thụt lề tương đối bên trong khối (VD: nội dung con của <code>\foreach</code>).</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">9. Phím tắt bàn phím</h4>
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-2 bg-[#f8fafc] rounded border border-[#dbe4ee] flex items-center justify-between">
                   <span>Hoàn tác</span>
