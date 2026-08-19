@@ -22,6 +22,7 @@ import {
   TikZExportOptions,
   PathAnnotation,
   RightAngleMark,
+  AppSettings,
 } from '../types';
 import { generateTikZCodeWithLineMap, getMathLabel } from '../utils/tikzExport';
 import { formatCm } from '../utils/geometry';
@@ -50,6 +51,7 @@ interface RightSidebarProps {
   tikzOptions: TikZExportOptions;
   onUpdateTikzOptions: (opts: Partial<TikZExportOptions>) => void;
   svgRef: React.RefObject<SVGSVGElement | null>;
+  settings?: AppSettings;
 }
 
 const PRESET_COLORS = [
@@ -114,6 +116,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   tikzOptions,
   onUpdateTikzOptions,
   svgRef,
+  settings,
 }) => {
   const [activeTab, setActiveTab] = useState<'properties' | 'tikz'>('properties');
   const [copied, setCopied] = useState(false);
@@ -121,7 +124,12 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   const [lastClickedLine, setLastClickedLine] = useState<number | null>(null);
   const [copiedRange, setCopiedRange] = useState<{ start: number; end: number } | null>(null);
 
-  const { code: tikzCode, shapeToLines } = generateTikZCodeWithLineMap(points, shapes, { ...tikzOptions, pathAnnotations, rightAngleMarks });
+  const { code: tikzCode, shapeToLines } = generateTikZCodeWithLineMap(points, shapes, {
+    ...tikzOptions,
+    pathAnnotations,
+    rightAngleMarks,
+    useNamedCoordinates: settings?.drawingMode === 'tracing' ? false : true,
+  });
   const selectedShapeId = selectedShape?.id;
   const highlightedLines = React.useMemo(() => {
     return new Set<number>(selectedShapeId ? shapeToLines.get(selectedShapeId) || [] : []);
