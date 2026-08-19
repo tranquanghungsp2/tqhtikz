@@ -3769,7 +3769,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
           {/* Math Label — render bằng KaTeX (LaTeX thật), khớp đúng cách chữ sẽ hiện trong PDF,
               kể cả chỉ số dưới (A_1 -> $A_{1}$) tự động đúng kiểu LaTeX, không cần tspan tay nữa. */}
-          {pt.label && (
+          {pt.label && settings.drawingMode !== 'tracing' && (
             <>
               {(() => {
                 const boxW = 60;
