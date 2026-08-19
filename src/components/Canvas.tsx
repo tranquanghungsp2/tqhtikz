@@ -255,6 +255,30 @@ export const Canvas: React.FC<CanvasProps> = ({
     setPendingLabelText('');
     onSelectTool('select');
   }, [onSelectTool]);
+
+  // Hộp nhập tên điểm neo (pic anchor) — hiện ra khi bấm vào 1 điểm có sẵn bằng tool "Điểm neo".
+  const [pendingAnchor, setPendingAnchor] = useState<{ pointId: string; screenX: number; screenY: number } | null>(null);
+  const [pendingAnchorText, setPendingAnchorText] = useState('');
+  const pendingAnchorInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (pendingAnchor) {
+      requestAnimationFrame(() => pendingAnchorInputRef.current?.focus());
+    }
+  }, [pendingAnchor]);
+
+  const confirmPendingAnchor = useCallback(() => {
+    if (!pendingAnchor) return;
+    const name = pendingAnchorText.trim();
+    onUpdatePoint(pendingAnchor.pointId, { anchorName: name || undefined });
+    setPendingAnchor(null);
+    setPendingAnchorText('');
+  }, [pendingAnchor, pendingAnchorText, onUpdatePoint]);
+
+  const cancelPendingAnchor = useCallback(() => {
+    setPendingAnchor(null);
+    setPendingAnchorText('');
+  }, []);
   const [selectedRefShapeId, setSelectedRefShapeId] = useState<string | null>(null);
   const [selectedRefEdgeIndex, setSelectedRefEdgeIndex] = useState<number | null>(null); // cạnh cụ thể đã chọn (nếu đường chuẩn là đường gấp khúc/HCN/vuông)
   const [axisRef, setAxisRef] = useState<'x' | 'y' | null>(null);
@@ -1334,6 +1358,17 @@ export const Canvas: React.FC<CanvasProps> = ({
           onAddShape(newShape);
         }
         setTempPoints([]);
+      }
+      return;
+    }
+
+    // ----------------- TOOL: ANCHOR_POINT (Điểm neo pic) -----------------
+    if (activeTool === 'anchor_point') {
+      const nearestPt = findNearestPoint(sx, sy, points, viewport, 14);
+      if (nearestPt) {
+        const s = worldToScreen(nearestPt.x, nearestPt.y, viewport);
+        setPendingAnchor({ pointId: nearestPt.id, screenX: s.x, screenY: s.y });
+        setPendingAnchorText(nearestPt.anchorName || '');
       }
       return;
     }
@@ -2420,6 +2455,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         return tempPoints.length === 0
           ? 'Bước 1/2: Nhấp chọn điểm đầu'
           : 'Bước 2/2: Nhấp chọn điểm cuối · Giữ Shift để bắt ngang/dọc (0°/90°)';
+      case 'anchor_point':
+        return 'Điểm neo (pic anchor): Nhấp vào 1 điểm có sẵn để đặt tên neo — dùng để tái sử dụng khi xuất dạng pic (VD: đặt tên "dinh", "chan"...).';
       case 'path_segment_label':
         return tempPoints.length === 0
           ? 'Nhãn đoạn: Bước 1/2: Nhấp chọn điểm thứ nhất'
@@ -3767,6 +3804,21 @@ export const Canvas: React.FC<CanvasProps> = ({
             </>
           )}
 
+          {/* Đánh dấu điểm đã đặt tên neo (pic anchor) — viền hình thoi tím quanh chấm điểm */}
+          {pt.anchorName && (
+            <rect
+              x={s.x - 6}
+              y={s.y - 6}
+              width={12}
+              height={12}
+              fill="none"
+              stroke="#7c3aed"
+              strokeWidth={1.5}
+              transform={`rotate(45 ${s.x} ${s.y})`}
+              className="pointer-events-none"
+            />
+          )}
+
           {/* Math Label — render bằng KaTeX (LaTeX thật), khớp đúng cách chữ sẽ hiện trong PDF,
               kể cả chỉ số dưới (A_1 -> $A_{1}$) tự động đúng kiểu LaTeX, không cần tspan tay nữa. */}
           {pt.label && settings.drawingMode !== 'tracing' && (
@@ -4206,6 +4258,46 @@ export const Canvas: React.FC<CanvasProps> = ({
           </button>
           <button
             onClick={cancelPendingPathAnnotation}
+            title="Hủy (Esc)"
+            className="w-7 h-7 shrink-0 rounded bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#5b6b82] flex items-center justify-center transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Hộp nhập tên điểm neo (pic anchor) — hiện ra ngay sau khi bấm vào 1 điểm */}
+      {pendingAnchor && (
+        <div
+          className="absolute z-30 bg-white border border-[#7c3aed] rounded-md shadow-md p-2 flex items-center gap-1.5"
+          style={{
+            left: pendingAnchor.screenX,
+            top: pendingAnchor.screenY,
+            transform: 'translate(-50%, -140%)',
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <input
+            ref={pendingAnchorInputRef}
+            type="text"
+            value={pendingAnchorText}
+            onChange={(e) => setPendingAnchorText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') confirmPendingAnchor();
+              if (e.key === 'Escape') cancelPendingAnchor();
+            }}
+            placeholder="VD: dinh, chan..."
+            className="text-xs w-32 px-2 py-1.5 border border-[#dbe4ee] rounded outline-none focus:border-[#7c3aed]"
+          />
+          <button
+            onClick={confirmPendingAnchor}
+            title="Xác nhận (Enter)"
+            className="w-7 h-7 shrink-0 rounded bg-[#7c3aed] hover:bg-[#6d28d9] text-white flex items-center justify-center transition-colors"
+          >
+            <Check className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={cancelPendingAnchor}
             title="Hủy (Esc)"
             className="w-7 h-7 shrink-0 rounded bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#5b6b82] flex items-center justify-center transition-colors"
           >
