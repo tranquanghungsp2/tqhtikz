@@ -1,30 +1,14 @@
 import React, { useRef } from 'react';
 import {
-  MousePointer,
-  Dot,
-  Minus,
-  Spline,
-  Circle,
-  Square,
-  Hexagon,
-  CornerDownRight,
-  GitCommit,
-  Equal,
-  Sparkles,
-  Grid,
-  Magnet,
-  Maximize2,
   Undo2,
   Redo2,
   Trash2,
-  Compass,
   Image as ImageIcon,
   Move,
   Lock,
   Unlock,
   X,
   Upload,
-  Pipette,
 } from 'lucide-react';
 import { ToolType, AppSettings, BackgroundImageState, GeoPoint } from '../types';
 import { dist, formatCm } from '../utils/geometry';
@@ -166,663 +150,265 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
       {/* Scrollable Tool Groups */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-        {/* Group 1: Chọn — ghim cố định ở đầu vùng cuộn */}
-        <div className="sticky -top-3 z-20 bg-white pt-3 -mx-3 px-3 pb-2 border-b border-[#dbe4ee]">
-          <p className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-widest mb-1.5 px-1">
-            Chọn
-          </p>
-          <button
-            id="tool-btn-select"
-            onClick={() => onSelectTool('select')}
-            title="Kéo thả điểm để di chuyển, nhấp vào hình để chọn và đổi thuộc tính (phím tắt: V)"
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-all text-left ${
-              activeTool === 'select'
-                ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs ring-1 ring-[#2f5d99]/20'
-                : 'text-[#16233a] hover:bg-[#f1f5f9]'
-            }`}
-          >
-            <MousePointer className="w-4 h-4 text-[#2f5d99]" />
-            <span>Con trỏ chọn</span>
-          </button>
-
-          <button
-            id="tool-btn-toggle_visibility"
-            onClick={() => onSelectTool('toggle_visibility')}
-            title="Bấm vào 1 điểm hoặc hình trên canvas để ẩn/hiện nó (ẩn = không xuất mã TikZ, vẫn mờ trên canvas)"
-            className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left mt-1 ${
-              activeTool === 'toggle_visibility'
-                ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs ring-1 ring-[#2f5d99]/20'
-                : 'text-[#16233a] hover:bg-[#f1f5f9]'
-            }`}
-          >
-            <span className="w-4 h-4 flex items-center justify-center shrink-0">👁️</span>
-            <span>Ẩn/Hiện đối tượng</span>
-          </button>
-        </div>
-
-        {/* Group 2: Điểm & đường */}
-        <div>
-          <p className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-widest mb-1.5 px-1">
-            Điểm & đường
-          </p>
-          <div className="space-y-1">
-            <button
-              id="tool-btn-point"
-              onClick={() => onSelectTool('point')}
-              title="Nhấp chuột vào canvas để tạo điểm tự do"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'point'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-current mx-1 shrink-0"></span>
-              <span>Điểm tự do</span>
-            </button>
-            <button
-              id="tool-btn-point-on-line"
-              onClick={() => onSelectTool('point_on_line')}
-              title="Điểm trên đường: nhấp vào 1 đường có sẵn để tạo điểm luôn ràng buộc nằm trên đường đó"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'point_on_line'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-current mx-1 shrink-0 ring-2 ring-[#f59e0b] ring-offset-1"></span>
-              <span>Điểm trên đường</span>
-            </button>
-            <button
-              id="tool-btn-measure"
-              onClick={() => onSelectTool('measure')}
-              title="Đo khoảng cách giữa 2 điểm, chia đôi/chia 3/chia 4"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'measure'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="font-mono text-xs font-bold leading-none w-4 text-center">↔</span>
-              <span>Đo & chia đoạn</span>
-            </button>
-            <button
-              id="tool-btn-segment"
-              onClick={() => onSelectTool('segment')}
-              title="Nhấp điểm đầu, nhấp điểm cuối để tạo đoạn thẳng"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'segment'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="w-4 h-[2px] bg-current shrink-0"></span>
-              <span>Đoạn thẳng</span>
-            </button>
-            <button
-              id="tool-btn-polyline"
-              onClick={() => onSelectTool('polyline')}
-              title="Nhấp liên tiếp nhiều điểm, nhấp điểm đầu để đóng hoặc bấm Hoàn thành"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'polyline'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <CornerDownRight className="w-4 h-4 shrink-0" />
-              <span>Đường gấp khúc</span>
-            </button>
-
-            {activeTool === 'polyline' && polylineStepCount > 0 && (
-              <div className="p-2 bg-[#fef3c7] rounded-md border border-[#f59e0b]/40 space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="text-[11px] text-[#b45309] font-medium">
-                  Đã chấm {polylineStepCount} điểm
-                </div>
-                {onFinishPolyline && (
-                  <button
-                    onClick={onFinishPolyline}
-                    className="w-full py-1 px-2 bg-[#b45309] hover:bg-[#92400e] text-white text-xs font-semibold rounded shadow-xs transition-colors"
-                  >
-                    Hoàn thành nét (Enter hoặc double-click)
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Nhãn & Ghi chú */}
-        <div>
-          <p className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-widest mb-1.5 px-1">
-            Nhãn & Ghi chú (TikZ \path)
-          </p>
-          <div className="space-y-1">
-            <button
-              id="tool-btn-path_segment_label"
-              onClick={() => onSelectTool('path_segment_label')}
-              title="Ghi nhãn dán trên đoạn thẳng giữa 2 điểm (A)--(B) node[pos=0.5, left] {$7\,m$}"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'path_segment_label'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs ring-1 ring-[#2f5d99]/10'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="font-mono text-xs font-bold leading-none w-4 text-center">⇎</span>
-              <span>Nhãn trên đoạn (2 điểm)</span>
-            </button>
-
-            <button
-              id="tool-btn-path_offset_label"
-              onClick={() => onSelectTool('path_offset_label')}
-              title="Ghi chú nhãn lệch / nhãn góc từ 1 điểm (A) ++ (30:20pt) node{$30^\circ$}"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'path_offset_label'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs ring-1 ring-[#2f5d99]/10'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="font-mono text-xs font-bold leading-none w-4 text-center">∡</span>
-              <span>Nhãn góc / lệch (1 điểm)</span>
-            </button>
-
-            <button
-              id="tool-btn-right_angle_mark"
-              onClick={() => onSelectTool('right_angle_mark')}
-              title="Ký hiệu góc vuông (3 điểm): chọn điểm 1, đỉnh góc vuông, điểm 2"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'right_angle_mark'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs ring-1 ring-[#2f5d99]/10'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="font-mono text-xs font-bold leading-none w-4 text-center">⌐</span>
-              <span>Ký hiệu góc vuông (3 điểm)</span>
-            </button>
-
-            <button
-              id="tool-btn-anchor_point"
-              onClick={() => onSelectTool('anchor_point')}
-              title="Nhấp vào 1 điểm có sẵn để đặt tên điểm neo — dùng để tái sử dụng khi xuất bản vẽ dạng pic (\\tikzset{pics/...})"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'anchor_point'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold ring-1 ring-[#2f5d99]/10'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="font-mono text-xs">⚓</span>
-              <span>Điểm neo (pic anchor)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Group 3: Hình cơ bản - Bento 2-column grid */}
-        <div>
-          <p className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-widest mb-1.5 px-1">
-            Hình cơ bản
-          </p>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              id="tool-btn-square"
-              onClick={() => onSelectTool('square')}
-              title="Hình vuông: Nhấp 2 góc đối diện"
-              className={`flex flex-col items-center justify-center p-2 rounded-md text-[11px] font-medium border transition-all ${
-                activeTool === 'square'
-                  ? 'bg-[#e4ecf7] border-[#2f5d99] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'bg-white border-[#dbe4ee] text-[#16233a] hover:bg-[#f8fafc]'
-              }`}
-            >
-              <div className="w-3.5 h-3.5 border-2 border-current mb-1"></div>
-              <span>Vuông</span>
-            </button>
-            <button
-              id="tool-btn-circle"
-              onClick={() => onSelectTool('circle')}
-              title="Đường tròn: Nhấp tâm, nhấp điểm bán kính"
-              className={`flex flex-col items-center justify-center p-2 rounded-md text-[11px] font-medium border transition-all ${
-                activeTool === 'circle'
-                  ? 'bg-[#e4ecf7] border-[#2f5d99] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'bg-white border-[#dbe4ee] text-[#16233a] hover:bg-[#f8fafc]'
-              }`}
-            >
-              <div className="w-3.5 h-3.5 rounded-full border-2 border-current mb-1"></div>
-              <span>Tròn</span>
-            </button>
-            <button
-              id="tool-btn-rectangle"
-              onClick={() => onSelectTool('rectangle')}
-              title="Hình chữ nhật: Nhấp 2 góc đối diện"
-              className={`flex flex-col items-center justify-center p-2 rounded-md text-[11px] font-medium border transition-all ${
-                activeTool === 'rectangle'
-                  ? 'bg-[#e4ecf7] border-[#2f5d99] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'bg-white border-[#dbe4ee] text-[#16233a] hover:bg-[#f8fafc]'
-              }`}
-            >
-              <div className="w-4 h-3 border-2 border-current mb-1"></div>
-              <span>Chữ nhật</span>
-            </button>
-
-            {activeTool === 'rectangle' && (
-              <div className="col-span-2 flex rounded-md border border-[#dbe4ee] overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
-                <button
-                  onClick={() => onChangeRectangleMode?.('shape')}
-                  className={`flex-1 py-1.5 text-[11px] font-medium transition-colors cursor-pointer ${
-                    rectangleMode === 'shape'
-                      ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold'
-                      : 'bg-white text-[#5b6b82] hover:bg-[#f8fafc]'
-                  }`}
-                >
-                  Vẽ hình liền
-                </button>
-                <button
-                  onClick={() => onChangeRectangleMode?.('points')}
-                  className={`flex-1 py-1.5 text-[11px] font-medium border-l border-[#dbe4ee] transition-colors cursor-pointer ${
-                    rectangleMode === 'points'
-                      ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold'
-                      : 'bg-white text-[#5b6b82] hover:bg-[#f8fafc]'
-                  }`}
-                >
-                  Chỉ tạo 4 điểm
-                </button>
-              </div>
-            )}
-            <button
-              id="tool-btn-rounded_rectangle"
-              onClick={() => onSelectTool('rounded_rectangle')}
-              title="Hình chữ nhật bo góc: Nhấp 2 góc đối diện"
-              className={`flex flex-col items-center justify-center p-2 rounded-md text-[11px] font-medium border transition-all ${
-                activeTool === 'rounded_rectangle'
-                  ? 'bg-[#e4ecf7] border-[#2f5d99] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'bg-white border-[#dbe4ee] text-[#16233a] hover:bg-[#f8fafc]'
-              }`}
-            >
-              <div className="w-4 h-3 border-2 border-current rounded-xs mb-1"></div>
-              <span>Bo góc</span>
-            </button>
-            <button
-              id="tool-btn-ellipse"
-              onClick={() => onSelectTool('ellipse')}
-              title="Elip: Nhấp tâm, nhấp bán trục ngang, nhấp bán trục dọc"
-              className={`col-span-2 flex items-center justify-center gap-2 p-1.5 rounded-md text-[11px] font-medium border transition-all ${
-                activeTool === 'ellipse'
-                  ? 'bg-[#e4ecf7] border-[#2f5d99] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'bg-white border-[#dbe4ee] text-[#16233a] hover:bg-[#f8fafc]'
-              }`}
-            >
-              <span className="w-4 h-3 border-2 border-current rounded-[50%]"></span>
-              <span>Elip</span>
-            </button>
-            <button
-              id="tool-btn-regular_polygon"
-              onClick={() => onSelectTool('regular_polygon')}
-              title={`Đa giác đều ${polygonSides} cạnh`}
-              className={`col-span-2 flex items-center justify-center gap-2 p-1.5 rounded-md text-[11px] font-medium border transition-all ${
-                activeTool === 'regular_polygon'
-                  ? 'bg-[#e4ecf7] border-[#2f5d99] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'bg-white border-[#dbe4ee] text-[#16233a] hover:bg-[#f8fafc]'
-              }`}
-            >
-              <Hexagon className="w-3.5 h-3.5" />
-              <span>Đa giác đều ({polygonSides} cạnh)</span>
-            </button>
-
-            {activeTool === 'regular_polygon' && (
-              <div className="col-span-2 p-2.5 bg-[#f8fafc] rounded-md border border-[#dbe4ee] space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="flex items-center justify-between text-xs text-[#16233a]">
-                  <span>Số cạnh:</span>
-                  <span className="font-semibold text-[#2f5d99]">{polygonSides}</span>
-                </div>
-                <input
-                  type="range"
-                  min={3}
-                  max={12}
-                  value={polygonSides}
-                  onChange={(e) => onChangePolygonSides(Number(e.target.value))}
-                  className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
-                />
-                <div className="flex justify-between text-[10px] text-[#5b6b82]">
-                  <span>3 (Tam giác)</span>
-                  <span>6 (Lục giác)</span>
-                  <span>12</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Group 4: Đường cong & nâng cao */}
-        <div>
-          <p className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-widest mb-1.5 px-1">
-            Đường cong & nâng cao
-          </p>
-          <div className="space-y-1">
-            <button
-              id="tool-btn-arc_3p"
-              onClick={() => onSelectTool('arc_3p')}
-              title="Cung tròn ngoại tiếp qua 3 điểm"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'arc_3p'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <Compass className="w-4 h-4 shrink-0" />
-              <span>Cung tròn qua 3 điểm</span>
-            </button>
-
-            <button
-              id="tool-btn-param_arc"
-              onClick={() => onSelectTool('param_arc')}
-              title="Cung tròn theo góc bắt đầu/kết thúc + bán kính (cú pháp TikZ arc(start:end:radius))"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'param_arc'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="font-mono text-xs font-bold leading-none w-4 text-center">⌒</span>
-              <span>Cung tròn (góc, bán kính)</span>
-            </button>
-
-            {activeTool === 'param_arc' && (
-              <div className="p-2.5 bg-[#f8fafc] rounded-md border border-[#dbe4ee] space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                {!paramArcStartPointId ? (
-                  <p className="text-[11px] text-[#5b6b82]">Nhấp 1 điểm trên canvas làm điểm bắt đầu cung.</p>
-                ) : (
-                  <>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between gap-2 text-xs text-[#16233a]">
-                        <span>Góc bắt đầu</span>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            value={arcStartAngle}
-                            min={-360}
-                            max={360}
-                            step={1}
-                            onChange={(e) => {
-                              const v = Number(e.target.value);
-                              if (!Number.isNaN(v)) onChangeArcStartAngle?.(v);
-                            }}
-                            className="w-16 text-right text-xs font-semibold text-[#2f5d99] bg-white border border-[#dbe4ee] rounded px-1.5 py-0.5 focus:outline-none focus:border-[#2f5d99]"
-                          />
-                          <span className="text-[#5b6b82]">°</span>
-                        </div>
-                      </div>
-                      <input
-                        type="range"
-                        min={-360}
-                        max={360}
-                        value={arcStartAngle}
-                        onChange={(e) => onChangeArcStartAngle?.(Number(e.target.value))}
-                        className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between gap-2 text-xs text-[#16233a]">
-                        <span>Góc kết thúc</span>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            value={arcEndAngle}
-                            min={-360}
-                            max={360}
-                            step={1}
-                            onChange={(e) => {
-                              const v = Number(e.target.value);
-                              if (!Number.isNaN(v)) onChangeArcEndAngle?.(v);
-                            }}
-                            className="w-16 text-right text-xs font-semibold text-[#2f5d99] bg-white border border-[#dbe4ee] rounded px-1.5 py-0.5 focus:outline-none focus:border-[#2f5d99]"
-                          />
-                          <span className="text-[#5b6b82]">°</span>
-                        </div>
-                      </div>
-                      <input
-                        type="range"
-                        min={-360}
-                        max={360}
-                        value={arcEndAngle}
-                        onChange={(e) => onChangeArcEndAngle?.(Number(e.target.value))}
-                        className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between gap-2 text-xs text-[#16233a]">
-                        <span>Bán kính</span>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            value={arcRadius}
-                            min={0.2}
-                            max={10}
-                            step={0.1}
-                            onChange={(e) => {
-                              const v = Number(e.target.value);
-                              if (!Number.isNaN(v)) onChangeArcRadius?.(v);
-                            }}
-                            className="w-16 text-right text-xs font-semibold text-[#2f5d99] bg-white border border-[#dbe4ee] rounded px-1.5 py-0.5 focus:outline-none focus:border-[#2f5d99]"
-                          />
-                          <span className="text-[#5b6b82]">cm</span>
-                        </div>
-                      </div>
-                      <input
-                        type="range"
-                        min={0.2}
-                        max={10}
-                        step={0.1}
-                        value={arcRadius}
-                        onChange={(e) => onChangeArcRadius?.(Number(e.target.value))}
-                        className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <button
-                        onClick={onTogglePickingArcRadius}
-                        className={`w-full text-[11px] font-medium px-2 py-1.5 rounded border transition-colors ${
-                          pickingArcRadius
-                            ? 'bg-[#e0f2fe] border-[#0284c7] text-[#0284c7]'
-                            : 'bg-white border-[#dbe4ee] text-[#5b6b82] hover:bg-[#f1f5f9]'
-                        }`}
-                      >
-                        📏 Lấy bán kính từ 2 điểm
-                      </button>
-
-                      {pickingArcRadius && (
-                        <div className="p-2 bg-[#f0f9ff] border border-[#7dd3fc] rounded-md space-y-1.5">
-                          {radiusPickPoints.length < 2 ? (
-                            <p className="text-[10.5px] text-[#0369a1]">
-                              Nhấp {radiusPickPoints.length === 0 ? '2 điểm' : '1 điểm nữa'} trên canvas để đo khoảng cách.
-                            </p>
-                          ) : (
-                            <>
-                              <div className="text-[11px] text-[#0369a1]">
-                                Khoảng cách: <span className="font-semibold">{formatCm(dist(radiusPickPoints[0], radiusPickPoints[1]))} cm</span>
-                              </div>
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => onApplyRadiusFromPoints?.(1)}
-                                  className="flex-1 text-[10.5px] font-medium bg-white border border-[#7dd3fc] hover:bg-[#e0f2fe] px-1.5 py-1 rounded"
-                                >
-                                  Dùng nguyên
-                                </button>
-                                <button
-                                  onClick={() => onApplyRadiusFromPoints?.(2)}
-                                  className="flex-1 text-[10.5px] font-medium bg-white border border-[#7dd3fc] hover:bg-[#e0f2fe] px-1.5 py-1 rounded"
-                                >
-                                  Chia đôi
-                                </button>
-                                <button
-                                  onClick={() => onApplyRadiusFromPoints?.(3)}
-                                  className="flex-1 text-[10.5px] font-medium bg-white border border-[#7dd3fc] hover:bg-[#e0f2fe] px-1.5 py-1 rounded"
-                                >
-                                  Chia 3
-                                </button>
-                              </div>
-                            </>
-                          )}
-                          <button onClick={onCancelRadiusPick} className="text-[10px] text-[#5b6b82] hover:text-[#16233a]">
-                            Huỷ
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
+        {/* Tuỳ chọn công cụ hiện tại — chỉ hiện khi đang chọn đúng công cụ liên quan.
+            Các nút CHỌN công cụ giờ nằm ở thanh ngang GeometryToolbar phía trên canvas. */}
+        {(activeTool === 'polyline' && polylineStepCount > 0) ||
+        activeTool === 'rectangle' ||
+        activeTool === 'regular_polygon' ||
+        activeTool === 'param_arc' ||
+        activeTool === 'bezier' ? (
+          <div>
+            <p className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-widest mb-1.5 px-1">
+              Tuỳ chọn công cụ hiện tại
+            </p>
+            <div className="space-y-2">
+              {activeTool === 'polyline' && polylineStepCount > 0 && (
+                <div className="p-2 bg-[#fef3c7] rounded-md border border-[#f59e0b]/40 space-y-1.5">
+                  <div className="text-[11px] text-[#b45309] font-medium">
+                    Đã chấm {polylineStepCount} điểm
+                  </div>
+                  {onFinishPolyline && (
                     <button
-                      onClick={onFinishParamArc}
-                      className="w-full py-1.5 px-2 bg-[#2f5d99] hover:bg-[#254a7a] text-white text-xs font-semibold rounded shadow-xs transition-colors cursor-pointer"
+                      onClick={onFinishPolyline}
+                      className="w-full py-1 px-2 bg-[#b45309] hover:bg-[#92400e] text-white text-xs font-semibold rounded shadow-xs transition-colors"
                     >
-                      Vẽ cung (Enter)
+                      Hoàn thành nét (Enter hoặc double-click)
                     </button>
-                  </>
-                )}
-              </div>
-            )}
-
-            <button
-              id="tool-btn-semicircle"
-              onClick={() => onSelectTool('semicircle')}
-              title="Nửa đường tròn: Nhấp tâm, nhấp điểm xác định bán kính và hướng cắt"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'semicircle'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <div className="w-4 h-2 border-t-2 border-l-2 border-r-2 border-b-2 border-current rounded-t-full shrink-0"></div>
-              <span>Nửa đường tròn</span>
-            </button>
-
-            <button
-              id="tool-btn-semi_ellipse"
-              onClick={() => onSelectTool('semi_ellipse')}
-              title="Nửa elip: Nhấp tâm, nhấp bán trục cắt, nhấp hướng phình"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'semi_ellipse'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="w-4 h-2.5 border-t-2 border-l-2 border-r-2 border-b-2 border-current rounded-t-[50%] shrink-0"></span>
-              <span>Nửa elip</span>
-            </button>
-
-            <button
-              id="tool-btn-parabola"
-              onClick={() => onSelectTool('parabola')}
-              title="Parabol: Nhấp đỉnh, nhấp 1 điểm parabol đi qua"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'parabola'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="font-mono text-xs font-bold leading-none w-4 text-center">∪</span>
-              <span>Parabol</span>
-            </button>
-
-            <button
-              id="tool-btn-hyperbola"
-              onClick={() => onSelectTool('hyperbola')}
-              title="Hypecbol: Nhấp tâm đối xứng, nhấp điểm xác định độ mở 2 nhánh"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'hyperbola'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="font-mono text-xs font-bold leading-none w-4 text-center">)(</span>
-              <span>Hypecbol</span>
-            </button>
-
-            <button
-              id="tool-btn-bezier"
-              onClick={() => onSelectTool('bezier')}
-              title="Đường cong Bezier với điểm uốn"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'bezier'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <Spline className="w-4 h-4 shrink-0" />
-              <span>Đường cong Bezier</span>
-            </button>
-
-            {activeTool === 'bezier' && (
-              <div className="p-2.5 bg-[#f8fafc] rounded-md border border-[#dbe4ee] space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="flex items-center justify-between text-xs text-[#16233a]">
-                  <span>Số đoạn cong:</span>
-                  <span className="font-semibold text-[#2f5d99]">{bezierSegments}</span>
+                  )}
                 </div>
-                <input
-                  type="range"
-                  min={1}
-                  max={10}
-                  value={bezierSegments}
-                  onChange={(e) => onChangeBezierSegments(Number(e.target.value))}
-                  className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
-                />
-                <button
-                  onClick={onToggleBezierClosed}
-                  className={`w-full py-1 px-2 rounded text-[11px] font-medium border text-center transition-colors ${
-                    bezierClosed
-                      ? 'bg-[#e4ecf7] border-[#2f5d99] text-[#2f5d99]'
-                      : 'bg-white border-[#dbe4ee] text-[#5b6b82] hover:bg-[#f1f5f9]'
-                  }`}
-                >
-                  {bezierClosed ? '✓ Đóng thành vòng kín' : 'Đường cong hở'}
-                </button>
-              </div>
-            )}
-            <button
-              id="tool-btn-intersection"
-              onClick={() => onSelectTool('intersection')}
-              title="Tìm giao điểm giữa 2 hình học đã vẽ"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'intersection'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <GitCommit className="w-4 h-4 shrink-0" />
-              <span>Giao điểm hình học</span>
-            </button>
-          </div>
-        </div>
+              )}
 
-        {/* Group 5: Quan hệ */}
-        <div>
-          <p className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-widest mb-1.5 px-1">
-            Quan hệ
-          </p>
-          <div className="space-y-1">
-            <button
-              id="tool-btn-parallel"
-              onClick={() => onSelectTool('parallel')}
-              title="Vẽ đường song song"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'parallel'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="font-bold text-sm leading-none w-4 text-center">∥</span>
-              <span>Song song</span>
-            </button>
-            <button
-              id="tool-btn-perpendicular"
-              onClick={() => onSelectTool('perpendicular')}
-              title="Vẽ đường vuông góc (tự động có ký hiệu vuông)"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
-                activeTool === 'perpendicular'
-                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
-              }`}
-            >
-              <span className="font-bold text-sm leading-none w-4 text-center">⊥</span>
-              <span>Vuông góc</span>
-            </button>
+              {activeTool === 'rectangle' && (
+                <div className="flex rounded-md border border-[#dbe4ee] overflow-hidden">
+                  <button
+                    onClick={() => onChangeRectangleMode?.('shape')}
+                    className={`flex-1 py-1.5 text-[11px] font-medium transition-colors cursor-pointer ${
+                      rectangleMode === 'shape'
+                        ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold'
+                        : 'bg-white text-[#5b6b82] hover:bg-[#f8fafc]'
+                    }`}
+                  >
+                    Vẽ hình liền
+                  </button>
+                  <button
+                    onClick={() => onChangeRectangleMode?.('points')}
+                    className={`flex-1 py-1.5 text-[11px] font-medium border-l border-[#dbe4ee] transition-colors cursor-pointer ${
+                      rectangleMode === 'points'
+                        ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold'
+                        : 'bg-white text-[#5b6b82] hover:bg-[#f8fafc]'
+                    }`}
+                  >
+                    Chỉ tạo 4 điểm
+                  </button>
+                </div>
+              )}
+
+              {activeTool === 'regular_polygon' && (
+                <div className="p-2.5 bg-[#f8fafc] rounded-md border border-[#dbe4ee] space-y-2">
+                  <div className="flex items-center justify-between text-xs text-[#16233a]">
+                    <span>Số cạnh:</span>
+                    <span className="font-semibold text-[#2f5d99]">{polygonSides}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={3}
+                    max={12}
+                    value={polygonSides}
+                    onChange={(e) => onChangePolygonSides(Number(e.target.value))}
+                    className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
+                  />
+                  <div className="flex justify-between text-[10px] text-[#5b6b82]">
+                    <span>3 (Tam giác)</span>
+                    <span>6 (Lục giác)</span>
+                    <span>12</span>
+                  </div>
+                </div>
+              )}
+
+              {activeTool === 'param_arc' && (
+                <div className="p-2.5 bg-[#f8fafc] rounded-md border border-[#dbe4ee] space-y-2.5">
+                  {!paramArcStartPointId ? (
+                    <p className="text-[11px] text-[#5b6b82]">Nhấp 1 điểm trên canvas làm điểm bắt đầu cung.</p>
+                  ) : (
+                    <>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-2 text-xs text-[#16233a]">
+                          <span>Góc bắt đầu</span>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={arcStartAngle}
+                              min={-360}
+                              max={360}
+                              step={1}
+                              onChange={(e) => {
+                                const v = Number(e.target.value);
+                                if (!Number.isNaN(v)) onChangeArcStartAngle?.(v);
+                              }}
+                              className="w-16 text-right text-xs font-semibold text-[#2f5d99] bg-white border border-[#dbe4ee] rounded px-1.5 py-0.5 focus:outline-none focus:border-[#2f5d99]"
+                            />
+                            <span className="text-[#5b6b82]">°</span>
+                          </div>
+                        </div>
+                        <input
+                          type="range"
+                          min={-360}
+                          max={360}
+                          value={arcStartAngle}
+                          onChange={(e) => onChangeArcStartAngle?.(Number(e.target.value))}
+                          className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-2 text-xs text-[#16233a]">
+                          <span>Góc kết thúc</span>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={arcEndAngle}
+                              min={-360}
+                              max={360}
+                              step={1}
+                              onChange={(e) => {
+                                const v = Number(e.target.value);
+                                if (!Number.isNaN(v)) onChangeArcEndAngle?.(v);
+                              }}
+                              className="w-16 text-right text-xs font-semibold text-[#2f5d99] bg-white border border-[#dbe4ee] rounded px-1.5 py-0.5 focus:outline-none focus:border-[#2f5d99]"
+                            />
+                            <span className="text-[#5b6b82]">°</span>
+                          </div>
+                        </div>
+                        <input
+                          type="range"
+                          min={-360}
+                          max={360}
+                          value={arcEndAngle}
+                          onChange={(e) => onChangeArcEndAngle?.(Number(e.target.value))}
+                          className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-2 text-xs text-[#16233a]">
+                          <span>Bán kính</span>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={arcRadius}
+                              min={0.2}
+                              max={10}
+                              step={0.1}
+                              onChange={(e) => {
+                                const v = Number(e.target.value);
+                                if (!Number.isNaN(v)) onChangeArcRadius?.(v);
+                              }}
+                              className="w-16 text-right text-xs font-semibold text-[#2f5d99] bg-white border border-[#dbe4ee] rounded px-1.5 py-0.5 focus:outline-none focus:border-[#2f5d99]"
+                            />
+                            <span className="text-[#5b6b82]">cm</span>
+                          </div>
+                        </div>
+                        <input
+                          type="range"
+                          min={0.2}
+                          max={10}
+                          step={0.1}
+                          value={arcRadius}
+                          onChange={(e) => onChangeArcRadius?.(Number(e.target.value))}
+                          className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <button
+                          onClick={onTogglePickingArcRadius}
+                          className={`w-full text-[11px] font-medium px-2 py-1.5 rounded border transition-colors ${
+                            pickingArcRadius
+                              ? 'bg-[#e0f2fe] border-[#0284c7] text-[#0284c7]'
+                              : 'bg-white border-[#dbe4ee] text-[#5b6b82] hover:bg-[#f1f5f9]'
+                          }`}
+                        >
+                          📏 Lấy bán kính từ 2 điểm
+                        </button>
+
+                        {pickingArcRadius && (
+                          <div className="p-2 bg-[#f0f9ff] border border-[#7dd3fc] rounded-md space-y-1.5">
+                            {radiusPickPoints.length < 2 ? (
+                              <p className="text-[10.5px] text-[#0369a1]">
+                                Nhấp {radiusPickPoints.length === 0 ? '2 điểm' : '1 điểm nữa'} trên canvas để đo khoảng cách.
+                              </p>
+                            ) : (
+                              <>
+                                <div className="text-[11px] text-[#0369a1]">
+                                  Khoảng cách: <span className="font-semibold">{formatCm(dist(radiusPickPoints[0], radiusPickPoints[1]))} cm</span>
+                                </div>
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => onApplyRadiusFromPoints?.(1)}
+                                    className="flex-1 text-[10.5px] font-medium bg-white border border-[#7dd3fc] hover:bg-[#e0f2fe] px-1.5 py-1 rounded"
+                                  >
+                                    Dùng nguyên
+                                  </button>
+                                  <button
+                                    onClick={() => onApplyRadiusFromPoints?.(2)}
+                                    className="flex-1 text-[10.5px] font-medium bg-white border border-[#7dd3fc] hover:bg-[#e0f2fe] px-1.5 py-1 rounded"
+                                  >
+                                    Chia đôi
+                                  </button>
+                                  <button
+                                    onClick={() => onApplyRadiusFromPoints?.(3)}
+                                    className="flex-1 text-[10.5px] font-medium bg-white border border-[#7dd3fc] hover:bg-[#e0f2fe] px-1.5 py-1 rounded"
+                                  >
+                                    Chia 3
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                            <button onClick={onCancelRadiusPick} className="text-[10px] text-[#5b6b82] hover:text-[#16233a]">
+                              Huỷ
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={onFinishParamArc}
+                        className="w-full py-1.5 px-2 bg-[#2f5d99] hover:bg-[#254a7a] text-white text-xs font-semibold rounded shadow-xs transition-colors cursor-pointer"
+                      >
+                        Vẽ cung (Enter)
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {activeTool === 'bezier' && (
+                <div className="p-2.5 bg-[#f8fafc] rounded-md border border-[#dbe4ee] space-y-2">
+                  <div className="flex items-center justify-between text-xs text-[#16233a]">
+                    <span>Số đoạn cong:</span>
+                    <span className="font-semibold text-[#2f5d99]">{bezierSegments}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    value={bezierSegments}
+                    onChange={(e) => onChangeBezierSegments(Number(e.target.value))}
+                    className="w-full h-1.5 bg-[#dbe4ee] rounded-lg appearance-none cursor-pointer accent-[#2f5d99]"
+                  />
+                  <button
+                    onClick={onToggleBezierClosed}
+                    className={`w-full py-1 px-2 rounded text-[11px] font-medium border text-center transition-colors ${
+                      bezierClosed
+                        ? 'bg-[#e4ecf7] border-[#2f5d99] text-[#2f5d99]'
+                        : 'bg-white border-[#dbe4ee] text-[#5b6b82] hover:bg-[#f1f5f9]'
+                    }`}
+                  >
+                    {bezierClosed ? '✓ Đóng thành vòng kín' : 'Đường cong hở'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {/* Group 6: Ảnh nền để đồ hình */}
         <div>
@@ -916,20 +502,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   )}
                 </button>
               </div>
-
-              <button
-                id="tool-btn-eyedropper"
-                onClick={() => onSelectTool('eyedropper')}
-                title="Nhấp vào ảnh nền để lấy mã màu tại vị trí đó"
-                className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left mt-1.5 ${
-                  activeTool === 'eyedropper'
-                    ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold shadow-2xs'
-                    : 'text-[#16233a] hover:bg-[#f1f5f9]'
-                }`}
-              >
-                <Pipette className="w-4 h-4 shrink-0" />
-                <span>Lấy mã màu ảnh</span>
-              </button>
 
               {/* Opacity slider */}
               <div className="space-y-1">
