@@ -26,7 +26,8 @@ export type ToolType =
   | 'toggle_visibility'
   | 'path_segment_label'
   | 'path_offset_label'
-  | 'right_angle_mark';
+  | 'right_angle_mark'
+  | 'anchor_point';
 
 export type LabelPosition =
   | 'auto'
@@ -49,6 +50,7 @@ export interface GeoPoint {
   labelPos?: LabelPosition;
   labelAngleDeg?: number; // góc nhãn tự do (độ, 0=phải, 90=trên, quy ước toán học), nếu có thì ƯU TIÊN hơn labelPos
   labelDistance?: number; // khoảng cách nhãn tới điểm, đơn vị pt (typographic point, khớp TikZ), mặc định 8
+  anchorName?: string; // tên điểm neo khi xuất dạng pic — xuất thành \coordinate (-tên) at (...); bên trong pic, dùng lại qua (P-tên) sau khi gọi \pic (P) at (x,y) {...};
   hidden?: boolean; // true = ẩn khỏi mã TikZ xuất ra (dùng toạ độ thô), vẫn hiện mờ trên canvas
   style?: {
     color?: string;
@@ -326,6 +328,8 @@ export interface TikZExportOptions {
   pathAnnotations?: PathAnnotation[];
   rightAngleMarks?: RightAngleMark[];
   useNamedCoordinates?: boolean; // false = KHÔNG khai báo \coordinate/tên điểm, mọi hình dùng thẳng toạ độ số (mặc định true)
+  exportAsPic?: boolean; // true = bọc toàn bộ output thành \tikzset{ pics/<picName>/.style={code={...}} } thay vì tikzpicture đầy đủ
+  picName?: string; // tên pic, ví dụ "tree", "human" — dùng lại qua \pic at (x,y) {tree};
 }
 
 export interface RightAngleMark {
