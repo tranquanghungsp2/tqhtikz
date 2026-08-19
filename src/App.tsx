@@ -81,7 +81,11 @@ export default function App() {
   const { status: approvalStatus } = useProfile(user);
   const isApproved = approvalStatus === 'approved';
   const isCopyRestricted = !user || !isApproved;
-  const showWatermark = !!user && !isApproved;
+  // Watermark hiện cho CẢ 2 trường hợp: chưa đăng nhập, VÀ đã đăng nhập nhưng chưa được
+  // duyệt — tức trùng đúng điều kiện với isCopyRestricted (hễ bị hạn chế sao chép thì cũng
+  // hiện watermark). Toast liên hệ Zalo vẫn CHỈ dành riêng cho trường hợp đã đăng nhập mà
+  // chưa duyệt (không đổi) — người chưa đăng nhập không bị làm phiền bởi toast đó.
+  const showWatermark = isCopyRestricted;
 
   const [showApprovalToast, setShowApprovalToast] = useState(false);
   useEffect(() => {
