@@ -238,11 +238,13 @@ export function generateTikZCodeWithLineMap(
   const rawCoord = (p: { x: number; y: number }): string =>
     `(${formatNumber(p.x)}, ${formatNumber(p.y)})`;
 
+  // Chế độ xuất dưới dạng "pic" tái sử dụng (\tikzset{ pics/<tên>/.style={code={...}} })
+  // — LUÔN dùng toạ độ số thô bên trong (không khai báo \coordinate tên điểm A, B, C...),
+  // vì pic cần độc lập, tự chứa, gọi lại được ở bất kỳ đâu bằng \pic at (x,y) {<tên>};
+  const isPicMode = !!options.exportAsPic && !!options.picName?.trim();
+  const useNamedCoordinates = isPicMode ? false : options.useNamedCoordinates !== false;
   const coordFor = (p: GeoPoint): string => {
-    if (options.useNamedCoordinates === false) {
-      return rawCoord(p);
-    }
-    return p.hidden ? rawCoord(p) : `(${getTikZCoordName(p)})`;
+    return p.hidden || !useNamedCoordinates ? rawCoord(p) : `(${getTikZCoordName(p)})`;
   };
 
   const lines: string[] = [];
@@ -254,7 +256,10 @@ export function generateTikZCodeWithLineMap(
     }
   };
 
-  if (options.standalone) {
+  if (isPicMode) {
+    lines.push(`\\tikzset{`);
+    lines.push(`  pics/${options.picName!.trim()}/.style={code={`);
+  } else if (options.standalone) {
     lines.push('% ==========================================');
     lines.push('% Geo TikZ Studio — LaTeX/TikZ Code Generator');
     lines.push('% Soạn đề thi Toán học — Chuẩn TikZ');
@@ -270,7 +275,7 @@ export function generateTikZCodeWithLineMap(
   }
 
   const visiblePoints = points.filter((p) => !p.hidden);
-  if (options.useNamedCoordinates !== false && visiblePoints.length > 0) {
+  if (useNamedCoordinates && visiblePoints.length > 0) {
     lines.push('');
     lines.push('  % --- Toạ độ điểm có nhãn ---');
     visiblePoints.forEach((p) => {
@@ -691,8 +696,10 @@ export function generateTikZCodeWithLineMap(
     lines.push(...shapeDrawLines);
   }
 
-  // 2. Nhãn và điểm — nhóm theo khoảng cách nhãn hoặc xuất lẻ
-  if ((options.includePoints || options.includeLabels) && points.length > 0) {
+  // 2. Nhãn và điểm — nhóm theo khoảng cách nhãn hoặc xuất lẻ.
+  // Bỏ qua HOÀN TOÀN khi xuất dạng pic — hình pic tái sử dụng (người, cây...) thường không
+  // cần chấm/nhãn của từng điểm dựng hình, chỉ cần nét vẽ + điểm neo (-tên) ở cuối.
+  if (!isPicMode && (options.includePoints || options.includeLabels) && points.length > 0) {
     const visiblePoints = points.filter((p) => !p.hidden);
 
     // Điểm có nhãn
@@ -782,7 +789,7 @@ export function generateTikZCodeWithLineMap(
     // (vốn dùng cho \draw (A)--(B) thông thường, luôn bọc ngoặc). Chỉ điểm ẨN mới cần ngoặc,
     // vì lúc đó phải in toạ độ số thô "(x, y)" (1 toạ độ literal thực sự cần ngoặc).
     const tokForAngleMark = (p: GeoPoint) =>
-      (p.hidden || options.useNamedCoordinates === false) ? rawCoord(p) : getTikZCoordName(p);
+      (p.hidden || !useNamedCoordinates) ? rawCoord(p) : getTikZCoordName(p);
     rightAngleMarks.forEach((mark) => {
       const p1 = pointsMap.get(mark.point1Id);
       const vertex = pointsMap.get(mark.vertexId);
@@ -824,9 +831,27 @@ export function generateTikZCodeWithLineMap(
     lines.push('  ;');
   }
 
-  lines.push('\\end{tikzpicture}');
-  if (options.standalone) {
-    lines.push('\\end{document}');
+  // Điểm neo (pic anchors) — CHỈ xuất khi đang ở chế độ pic, vì cú pháp \coordinate (-tên)
+  // chỉ có ý nghĩa bên trong 1 pic (gọi \pic (P) at (x,y) {<tên>}; xong dùng lại qua (P-tên)).
+  if (isPicMode) {
+    const anchorPoints = points.filter((p) => p.anchorName && p.anchorName.trim());
+    if (anchorPoints.length > 0) {
+      lines.push('');
+      lines.push('  % --- Điểm neo (pic anchors) ---');
+      anchorPoints.forEach((p) => {
+        lines.push(`  \\coordinate (-${p.anchorName!.trim()}) at (${formatNumber(p.x)}, ${formatNumber(p.y)});`);
+      });
+    }
+  }
+
+  if (isPicMode) {
+    lines.push('  }}');
+    lines.push('}');
+  } else {
+    lines.push('\\end{tikzpicture}');
+    if (options.standalone) {
+      lines.push('\\end{document}');
+    }
   }
 
   const code = lines.join('\n');
