@@ -237,6 +237,8 @@ export default function App() {
     includePoints: true,
     scale: 1,
     useColorDefinitions: true,
+    exportAsPic: false,
+    picName: '',
   });
 
   // Background image state for tracing (not in undo/redo history)
