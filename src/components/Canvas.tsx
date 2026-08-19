@@ -748,6 +748,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   // đường song song/vuông góc) -> tạo điểm RÀNG BUỘC nằm trên đúng cạnh đó (derivedFrom:
   // pointOnLine), để tiện dựng hình mà không cần chuyển sang tool "Điểm trên đường" riêng.
   // Bezier CHƯA hỗ trợ ở bước này (cần thuật toán chiếu điểm lên đường cong riêng).
+  // Nếu bấm gần trục Ox/Oy (chỉ khi đang bật "Hiện trục Oxy") -> bắt điểm đúng lên trục
+  // (y=0 nếu gần Ox, x=0 nếu gần Oy). Trục cố định, không phải 1 hình có thể kéo dời, nên
+  // chỉ cần bắt đúng toạ độ lúc tạo, không cần ràng buộc kéo-theo như các cạnh khác.
   const getOrCreatePoint = useCallback(
     (sx: number, sy: number, wx: number, wy: number): GeoPoint => {
       const nearest = findNearestPoint(sx, sy, points, viewport, 12);
@@ -768,18 +771,28 @@ export const Canvas: React.FC<CanvasProps> = ({
         return newPoint;
       }
 
+      let finalWx = wx;
+      let finalWy = wy;
+      if (settings.showAxes) {
+        const originSx = viewport.width / 2 + viewport.panX;
+        const originSy = viewport.height / 2 + viewport.panY;
+        const AXIS_SNAP_PX = 10;
+        if (Math.abs(sy - originSy) < AXIS_SNAP_PX) finalWy = 0; // gần Ox -> bắt y = 0
+        if (Math.abs(sx - originSx) < AXIS_SNAP_PX) finalWx = 0; // gần Oy -> bắt x = 0
+      }
+
       const newPoint: GeoPoint = {
         id: `p_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         label: nextPointLabel,
-        x: wx,
-        y: wy,
+        x: finalWx,
+        y: finalWy,
         labelPos: 'auto',
         style: { color: '#16233a', pointStyle: 'dot' },
       };
       onAddPoint(newPoint);
       return newPoint;
     },
-    [points, viewport, nextPointLabel, onAddPoint, findLineForConstrainedPoint]
+    [points, viewport, nextPointLabel, onAddPoint, findLineForConstrainedPoint, settings.showAxes]
   );
 
   // Trả về id các điểm định nghĩa hình — dùng để kéo cả hình.
