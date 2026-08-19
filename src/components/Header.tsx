@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Eye,
 } from 'lucide-react';
-import { GeoPoint, GeoShape, BackgroundImageState, PathAnnotation } from '../types';
+import { GeoPoint, GeoShape, BackgroundImageState, PathAnnotation, RightAngleMark } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
 import { AdminPanel } from './AdminPanel';
@@ -29,12 +29,15 @@ interface HeaderProps {
   shapes: GeoShape[];
   pointCounter: number;
   bgImage: BackgroundImageState;
+  pathAnnotations: PathAnnotation[];
+  rightAngleMarks: RightAngleMark[];
   onLoadDrawing: (
     points: GeoPoint[],
     shapes: GeoShape[],
     pointCounter: number,
     bgImage: BackgroundImageState | null,
-    pathAnnotations?: PathAnnotation[]
+    pathAnnotations?: PathAnnotation[],
+    rightAngleMarks?: RightAngleMark[]
   ) => void;
   formulaMode: boolean;
   onToggleFormulaMode: () => void;
@@ -46,6 +49,8 @@ export const Header: React.FC<HeaderProps> = ({
   shapes,
   pointCounter,
   bgImage,
+  pathAnnotations,
+  rightAngleMarks,
   onLoadDrawing,
   formulaMode,
   onToggleFormulaMode,
@@ -85,7 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (!saveNameInput.trim()) return;
     setBusy(true);
     try {
-      await saveNewDrawing(saveNameInput.trim(), points, shapes, pointCounter, bgImage);
+      await saveNewDrawing(saveNameInput.trim(), points, shapes, pointCounter, bgImage, pathAnnotations, rightAngleMarks);
       setSaveNameInput('');
       setSavedDrawings(await listMyDrawings());
     } catch (error) {
@@ -99,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (!currentDrawingId) return;
     setBusy(true);
     try {
-      await updateDrawing(currentDrawingId, points, shapes, pointCounter, bgImage);
+      await updateDrawing(currentDrawingId, points, shapes, pointCounter, bgImage, pathAnnotations, rightAngleMarks);
       setSavedDrawings(await listMyDrawings());
     } catch (error) {
       console.error('Error updating drawing:', error);
@@ -109,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const handleLoad = (d: SavedDrawing) => {
-    onLoadDrawing(d.points, d.shapes, d.point_counter, d.background_image);
+    onLoadDrawing(d.points, d.shapes, d.point_counter, d.background_image, d.path_annotations || [], d.right_angle_marks || []);
     setCurrentDrawingId(d.id);
     setShowSaveMenu(false);
   };
