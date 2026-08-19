@@ -101,6 +101,8 @@ interface CanvasProps {
   onUpdateRightAngleMark?: (id: string, updates: Partial<RightAngleMark>) => void;
 }
 
+const EDGE_SHAPE_TYPES = new Set(['rectangle', 'rounded_rectangle', 'square', 'polyline']);
+
 export const Canvas: React.FC<CanvasProps> = ({
   points,
   shapes,
@@ -668,11 +670,77 @@ export const Canvas: React.FC<CanvasProps> = ({
     [viewport, settings.snapToGrid, settings.gridStep, svgRef]
   );
 
-  // Helper to obtain or create a point at clicked location
+  // Giống findPointOnAnyLine, nhưng trả thêm shapeId và tham số t để tạo điểm RÀNG BUỘC
+  // (dùng riêng cho tool "Điểm trên đường", khác với snap một lần của tool song song/vuông góc).
+  const findLineForConstrainedPoint = useCallback(
+    (
+      sx: number,
+      sy: number
+    ): { x: number; y: number; shapeId: string; t: number; edgeIndex?: number } | null => {
+      // Cố ý KHÔNG dùng wx/wy đã bị snap lưới — điểm trên đường luôn cần bám chính xác
+      // theo vị trí chuột thật, việc bắt lưới ở đây sẽ làm sai lệch phép chiếu lên đường.
+      const rawWorld = screenToWorld(sx, sy, viewport);
+      let best: { x: number; y: number; shapeId: string; t: number; edgeIndex?: number } | null = null;
+      let bestDistPx = 14; // đồng bộ ngưỡng với findNearestPoint (14px) cho dễ bắt hơn
+
+      const evaluateSegment = (a: { x: number; y: number }, b: { x: number; y: number }, shapeId: string, edgeIndex?: number) => {
+        const proj = closestPointOnSegment(rawWorld, a, b);
+        const sProj = worldToScreen(proj.x, proj.y, viewport);
+        const d = Math.hypot(sProj.x - sx, sProj.y - sy);
+        if (d < bestDistPx) {
+          const abx = b.x - a.x;
+          const aby = b.y - a.y;
+          const len2 = abx * abx + aby * aby || 1;
+          const t = ((proj.x - a.x) * abx + (proj.y - a.y) * aby) / len2;
+          bestDistPx = d;
+          best = { x: proj.x, y: proj.y, shapeId, t, edgeIndex };
+        }
+      };
+
+      for (const s of shapes) {
+        if (s.type === 'segment') {
+          const a = pointsMap.get(s.pointIds[0]);
+          const b = pointsMap.get(s.pointIds[1]);
+          if (a && b) evaluateSegment(a, b, s.id);
+        } else if (s.type === 'parallel_line' || s.type === 'perpendicular_line') {
+          const a = pointsMap.get(s.throughPointId);
+          const b = pointsMap.get(s.endPointId);
+          if (a && b) evaluateSegment(a, b, s.id);
+        } else if (EDGE_SHAPE_TYPES.has(s.type)) {
+          const edges = getShapeEdges(s, pointsMap);
+          edges.forEach((edge, idx) => evaluateSegment(edge.p1, edge.p2, s.id, idx));
+        }
+      }
+      return best;
+    },
+    [viewport, shapes, points]
+  );
+
+  // Helper to obtain or create a point at clicked location.
+  // Nếu bấm gần 1 điểm có sẵn -> dùng lại điểm đó (như cũ).
+  // Nếu không, nhưng bấm gần 1 cạnh có sẵn (đoạn thẳng, cạnh HCN/hình vuông/đường gấp khúc,
+  // đường song song/vuông góc) -> tạo điểm RÀNG BUỘC nằm trên đúng cạnh đó (derivedFrom:
+  // pointOnLine), để tiện dựng hình mà không cần chuyển sang tool "Điểm trên đường" riêng.
+  // Bezier CHƯA hỗ trợ ở bước này (cần thuật toán chiếu điểm lên đường cong riêng).
   const getOrCreatePoint = useCallback(
     (sx: number, sy: number, wx: number, wy: number): GeoPoint => {
       const nearest = findNearestPoint(sx, sy, points, viewport, 12);
       if (nearest) return nearest;
+
+      const hit = findLineForConstrainedPoint(sx, sy);
+      if (hit) {
+        const newPoint: GeoPoint = {
+          id: `p_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          label: nextPointLabel,
+          x: hit.x,
+          y: hit.y,
+          labelPos: 'auto',
+          style: { color: '#f59e0b', pointStyle: 'dot' },
+          derivedFrom: { type: 'pointOnLine', shapeId: hit.shapeId, t: hit.t, edgeIndex: hit.edgeIndex },
+        };
+        onAddPoint(newPoint);
+        return newPoint;
+      }
 
       const newPoint: GeoPoint = {
         id: `p_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -685,7 +753,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       onAddPoint(newPoint);
       return newPoint;
     },
-    [points, viewport, nextPointLabel, onAddPoint]
+    [points, viewport, nextPointLabel, onAddPoint, findLineForConstrainedPoint]
   );
 
   // Trả về id các điểm định nghĩa hình — dùng để kéo cả hình.
@@ -961,8 +1029,6 @@ export const Canvas: React.FC<CanvasProps> = ({
     return bestIntersection;
   };
 
-  const EDGE_SHAPE_TYPES = new Set(['rectangle', 'rounded_rectangle', 'square', 'polyline']);
-
   // Giao điểm của 2 đường THẲNG (không giới hạn đoạn) — dùng để tính đúng vị trí điểm cuối
   // vuông góc khi nó còn bị ép buộc nằm trên 1 đường khác cùng lúc.
   const intersectTwoLines = (
@@ -1006,49 +1072,6 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
     if (!a || !b) return null;
     return { anchor: a, dir: { x: b.x - a.x, y: b.y - a.y } };
-  };
-
-  // Giống findPointOnAnyLine, nhưng trả thêm shapeId và tham số t để tạo điểm RÀNG BUỘC
-  // (dùng riêng cho tool "Điểm trên đường", khác với snap một lần của tool song song/vuông góc).
-  const findLineForConstrainedPoint = (
-    sx: number,
-    sy: number
-  ): { x: number; y: number; shapeId: string; t: number; edgeIndex?: number } | null => {
-    // Cố ý KHÔNG dùng wx/wy đã bị snap lưới — điểm trên đường luôn cần bám chính xác
-    // theo vị trí chuột thật, việc bắt lưới ở đây sẽ làm sai lệch phép chiếu lên đường.
-    const rawWorld = screenToWorld(sx, sy, viewport);
-    let best: { x: number; y: number; shapeId: string; t: number; edgeIndex?: number } | null = null;
-    let bestDistPx = 14; // đồng bộ ngưỡng với findNearestPoint (14px) cho dễ bắt hơn
-
-    const evaluateSegment = (a: { x: number; y: number }, b: { x: number; y: number }, shapeId: string, edgeIndex?: number) => {
-      const proj = closestPointOnSegment(rawWorld, a, b);
-      const sProj = worldToScreen(proj.x, proj.y, viewport);
-      const d = Math.hypot(sProj.x - sx, sProj.y - sy);
-      if (d < bestDistPx) {
-        const abx = b.x - a.x;
-        const aby = b.y - a.y;
-        const len2 = abx * abx + aby * aby || 1;
-        const t = ((proj.x - a.x) * abx + (proj.y - a.y) * aby) / len2;
-        bestDistPx = d;
-        best = { x: proj.x, y: proj.y, shapeId, t, edgeIndex };
-      }
-    };
-
-    for (const s of shapes) {
-      if (s.type === 'segment') {
-        const a = pointsMap.get(s.pointIds[0]);
-        const b = pointsMap.get(s.pointIds[1]);
-        if (a && b) evaluateSegment(a, b, s.id);
-      } else if (s.type === 'parallel_line' || s.type === 'perpendicular_line') {
-        const a = pointsMap.get(s.throughPointId);
-        const b = pointsMap.get(s.endPointId);
-        if (a && b) evaluateSegment(a, b, s.id);
-      } else if (EDGE_SHAPE_TYPES.has(s.type)) {
-        const edges = getShapeEdges(s, pointsMap);
-        edges.forEach((edge, idx) => evaluateSegment(edge.p1, edge.p2, s.id, idx));
-      }
-    }
-    return best;
   };
 
   // Giống getOrCreatePoint, nhưng nếu nhấp gần 1 đường có sẵn (không trúng điểm),
