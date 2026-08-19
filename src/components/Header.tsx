@@ -76,6 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [saveNameInput, setSaveNameInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [showSavedBadge, setShowSavedBadge] = useState(false);
+  const [showUnsavedNewConfirm, setShowUnsavedNewConfirm] = useState(false);
   const saveMenuRef = React.useRef<HTMLDivElement>(null);
 
   // "Đang lưu..." hiện liên tục cho tới khi lưu xong; "Đã lưu" chỉ hiện thoáng qua 2s rồi tự ẩn.
@@ -163,10 +164,41 @@ export const Header: React.FC<HeaderProps> = ({
 
   // Tạo bản vẽ TRẮNG mới — xoá canvas hiện tại và quên liên kết với file đang mở, để "Ghi đè
   // bản đang mở" không lỡ tay đè lên file cũ, và để người dùng luôn biết rõ mình đang ở bản mới.
-  const handleNewDrawing = () => {
+  const performNewDrawing = () => {
     onLoadDrawing([], [], 0, null, [], [], null, null);
     setSaveNameInput('');
     setShowSaveMenu(false);
+    setShowUnsavedNewConfirm(false);
+  };
+
+  // Bản đang vẽ CHƯA TỪNG được lưu (không có currentDrawingId) mà đang có nội dung — tạo mới
+  // ngay sẽ mất trắng, không khôi phục được (khác bản đã lưu, được tự động lưu liên tục nên
+  // luôn an toàn) — cần hỏi xác nhận trước, kèm lựa chọn lưu lại trước khi xoá.
+  const handleNewDrawing = () => {
+    const hasUnsavedContent = !currentDrawingId && (points.length > 0 || shapes.length > 0);
+    if (hasUnsavedContent) {
+      setShowUnsavedNewConfirm(true);
+      return;
+    }
+    performNewDrawing();
+  };
+
+  // Lưu bản đang vẽ (dùng tên đã gõ trong ô nhập nếu có, không thì tự đặt tên theo thời điểm
+  // hiện tại) rồi mới chuyển sang canvas trắng — dành cho lúc bấm nhầm "Tạo bản vẽ mới" mà
+  // tiếc công vừa vẽ.
+  const handleSaveThenNew = async () => {
+    const nameToSave =
+      saveNameInput.trim() ||
+      `Bản vẽ ${new Date().toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+    setBusy(true);
+    try {
+      await saveNewDrawing(nameToSave, points, shapes, pointCounter, bgImage, pathAnnotations, rightAngleMarks);
+      performNewDrawing();
+    } catch (error) {
+      console.error('Error saving before new drawing:', error);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -525,6 +557,51 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
       {showAdminPanel && <AdminPanel onClose={() => setShowAdminPanel(false)} />}
+
+      {/* Xác nhận tạo bản vẽ mới khi bản đang vẽ chưa từng được lưu */}
+      {showUnsavedNewConfirm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-[#dbe4ee] rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-4 space-y-3">
+              <div className="w-10 h-10 rounded-full bg-[#fef3c7] text-[#92400e] flex items-center justify-center mx-auto">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-sm font-semibold text-[#16233a]">
+                  Bản vẽ chưa được lưu
+                </h3>
+                <p className="text-xs text-[#5b6b82] leading-relaxed">
+                  Bản vẽ hiện tại chưa từng được lưu. Bạn muốn lưu lại trước khi tạo bản mới, hay xoá luôn không lưu?
+                </p>
+              </div>
+            </div>
+
+            <div className="px-4 pb-4 flex flex-col gap-1.5">
+              <button
+                onClick={handleSaveThenNew}
+                disabled={busy}
+                className="w-full py-1.5 px-3 bg-[#2f5d99] hover:bg-[#254a7a] text-white text-xs font-semibold rounded-md shadow-xs transition-colors disabled:opacity-50"
+              >
+                💾 Lưu lại rồi tạo mới
+              </button>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setShowUnsavedNewConfirm(false)}
+                  className="flex-1 py-1.5 px-3 bg-white hover:bg-[#f1f5f9] text-[#16233a] border border-[#dbe4ee] text-xs font-semibold rounded-md transition-colors"
+                >
+                  Huỷ bỏ
+                </button>
+                <button
+                  onClick={performNewDrawing}
+                  className="flex-1 py-1.5 px-3 bg-[#b91c1c] hover:bg-[#991b1b] text-white text-xs font-semibold rounded-md shadow-xs transition-colors"
+                >
+                  Không lưu, xoá luôn
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
