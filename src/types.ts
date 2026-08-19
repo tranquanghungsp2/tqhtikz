@@ -85,6 +85,15 @@ export interface GeoPoint {
         type: 'rectangleCorner';
         xSourceId: string;
         ySourceId: string;
+      }
+    | {
+        type: 'perpEndOnLine';
+        // Điểm cuối của 1 đường song song/vuông góc (parallel_line/perpendicular_line),
+        // ĐỒNG THỜI bị ép buộc luôn nằm trên 1 đường/cạnh khác (targetShapeId) — vị trí
+        // thật sự luôn được tính là GIAO ĐIỂM giữa tia song song/vuông góc đó và đường
+        // mục tiêu này, không phải toạ độ tự do hay theo tham số t cố định.
+        targetShapeId: string;
+        targetEdgeIndex?: number; // nếu targetShapeId là hình nhiều cạnh (HCN/gấp khúc)
       };
 }
 
