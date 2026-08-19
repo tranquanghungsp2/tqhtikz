@@ -10,6 +10,7 @@ import {
   Clock,
   ShieldCheck,
   Eye,
+  BookOpen,
 } from 'lucide-react';
 import { GeoPoint, GeoShape, BackgroundImageState, PathAnnotation, RightAngleMark } from '../types';
 import { useAuth } from '../hooks/useAuth';
@@ -206,16 +207,18 @@ export const Header: React.FC<HeaderProps> = ({
             Sản phẩm được phát triển bởi Trần Quang Hùng. Phiên bản 1.0
           </span>
         </div>
-        <button
-          onClick={onToggleFormulaMode}
-          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border transition-colors ${
-            formulaMode
-              ? 'bg-[#2f5d99] border-[#2f5d99] text-white'
-              : 'bg-white border-[#dbe4ee] text-[#5b6b82] hover:bg-[#f8fafc]'
-          }`}
-        >
-          {formulaMode ? '📐 Chế độ công thức' : '🖱️ Chế độ chuột'}
-        </button>
+        {false && (
+          <button
+            onClick={onToggleFormulaMode}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border transition-colors ${
+              formulaMode
+                ? 'bg-[#2f5d99] border-[#2f5d99] text-white'
+                : 'bg-white border-[#dbe4ee] text-[#5b6b82] hover:bg-[#f8fafc]'
+            }`}
+          >
+            {formulaMode ? '📐 Chế độ công thức' : '🖱️ Chế độ chuột'}
+          </button>
+        )}
       </div>
 
       {/* Center/Right Actions: Save/Load & Shortcuts */}
@@ -355,33 +358,35 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* Visibility Manager button */}
-        <button
-          onClick={onOpenVisibilityManager}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-[#5b6b82] hover:text-[#16233a] hover:bg-[#f8fafc] border border-transparent hover:border-[#dbe4ee] rounded-md transition-colors"
-        >
-          <Eye className="w-3.5 h-3.5" />
-          <span>Ẩn / Hiện</span>
-        </button>
+        {/* Visibility Manager button — ẩn khỏi giao diện, giữ nguyên onOpenVisibilityManager/VisibilityManager để bật lại dễ dàng sau này nếu cần */}
+        {false && (
+          <button
+            onClick={onOpenVisibilityManager}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-[#5b6b82] hover:text-[#16233a] hover:bg-[#f8fafc] border border-transparent hover:border-[#dbe4ee] rounded-md transition-colors"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Ẩn / Hiện</span>
+          </button>
+        )}
 
-        {/* Shortcuts button */}
+        {/* Hướng dẫn sử dụng button (trước là "Phím tắt") */}
         <button
           onClick={() => setShowShortcutsModal(true)}
           className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-[#5b6b82] hover:text-[#16233a] hover:bg-[#f8fafc] border border-transparent hover:border-[#dbe4ee] rounded-md transition-colors"
         >
-          <Keyboard className="w-3.5 h-3.5" />
-          <span>Phím tắt</span>
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>Hướng dẫn sử dụng</span>
         </button>
       </div>
 
-      {/* Shortcuts Modal */}
+      {/* Hướng dẫn sử dụng Modal (trước là "Shortcuts Modal") */}
       {showShortcutsModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-[#dbe4ee] rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-4 py-3 border-b border-[#dbe4ee] flex items-center justify-between bg-[#f8fafc]">
+          <div className="bg-white border border-[#dbe4ee] rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-4 py-3 border-b border-[#dbe4ee] flex items-center justify-between bg-[#f8fafc] shrink-0">
               <div className="flex items-center gap-2">
-                <Keyboard className="w-4 h-4 text-[#2f5d99]" />
-                <h3 className="text-sm font-semibold text-[#16233a]">Phím tắt bàn phím</h3>
+                <BookOpen className="w-4 h-4 text-[#2f5d99]" />
+                <h3 className="text-sm font-semibold text-[#16233a]">Hướng dẫn sử dụng</h3>
               </div>
               <button
                 onClick={() => setShowShortcutsModal(false)}
@@ -391,7 +396,44 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </div>
 
-            <div className="p-4 space-y-3 text-xs text-[#16233a]">
+            <div className="p-4 space-y-4 text-xs text-[#16233a] overflow-y-auto">
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">1. Vẽ hình cơ bản</h4>
+                <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
+                  <li>Chọn công cụ ở thanh trái, nhấp lên canvas theo hướng dẫn hiện ở góc dưới trái màn hình.</li>
+                  <li>Nhấp vào 1 điểm/cạnh có sẵn để dùng lại, thay vì tạo điểm mới trùng vị trí.</li>
+                  <li>Bấm vào cạnh của hình chữ nhật/đường gấp khúc/đoạn thẳng khi đang đặt điểm sẽ tự tạo điểm luôn nằm ràng buộc trên cạnh đó.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">2. Nhãn &amp; ký hiệu</h4>
+                <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
+                  <li><span className="font-medium text-[#16233a]">Nhãn đoạn thẳng / Nhãn góc:</span> chọn điểm xong sẽ hiện hộp nhập nội dung LaTeX (VD: <code>$7\,m$</code>), gõ xong Enter để tạo.</li>
+                  <li><span className="font-medium text-[#16233a]">Ký hiệu góc vuông:</span> chọn 3 điểm (đầu — đỉnh — cuối), chỉnh bán kính trong panel bên phải.</li>
+                  <li><span className="font-medium text-[#16233a]">Điểm neo (pic anchor):</span> nhấp vào 1 điểm có sẵn để đặt tên neo, dùng khi xuất bản vẽ dạng <code>pic</code> tái sử dụng.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">3. Chế độ vẽ</h4>
+                <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
+                  <li><span className="font-medium text-[#16233a]">Hình học:</span> hiện tên điểm A, B, C..., mã TikZ dùng <code>\coordinate</code> có tên.</li>
+                  <li><span className="font-medium text-[#16233a]">Vẽ theo ảnh thực:</span> ẩn hết tên điểm, mã TikZ dùng thẳng toạ độ số — phù hợp khi đồ hình theo ảnh nền.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">4. Lưu &amp; tải</h4>
+                <ul className="space-y-1 list-disc list-inside text-[#5b6b82] leading-relaxed">
+                  <li>Đăng nhập rồi bấm "Lưu / Tải hình" để lưu bản vẽ lên tài khoản.</li>
+                  <li>Khi đang mở 1 bản vẽ đã lưu, mọi thay đổi sẽ <span className="font-medium text-[#16233a]">tự động lưu</span> sau ~2.5 giây ngừng thao tác (xem trạng thái ở giữa thanh trên cùng).</li>
+                  <li>Bấm "+ Tạo bản vẽ mới" trong menu Lưu/Tải để bắt đầu 1 canvas trắng, không ảnh hưởng file đang mở.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-[#2f5d99] uppercase tracking-wide">5. Phím tắt bàn phím</h4>
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-2 bg-[#f8fafc] rounded border border-[#dbe4ee] flex items-center justify-between">
                   <span>Hoàn tác</span>
@@ -432,7 +474,9 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            <div className="px-4 py-2.5 bg-[#f8fafc] border-t border-[#dbe4ee] text-right">
+          </div>
+
+          <div className="px-4 py-2.5 bg-[#f8fafc] border-t border-[#dbe4ee] text-right shrink-0">
               <button
                 onClick={() => setShowShortcutsModal(false)}
                 className="px-3 py-1.5 bg-[#2f5d99] text-white text-xs font-semibold rounded-md shadow-xs"
