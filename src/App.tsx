@@ -11,6 +11,7 @@ import {
   RightAngleMark,
 } from './types';
 import { Toolbar } from './components/Toolbar';
+import { GeometryToolbar } from './components/GeometryToolbar';
 import { Canvas } from './components/Canvas';
 import { RightSidebar } from './components/RightSidebar';
 import { Header } from './components/Header';
@@ -1281,61 +1282,77 @@ export default function App() {
               onSetGlobalLabelDistance={handleSetGlobalLabelDistance}
             />
 
-            {/* Column 2: Middle Canvas Area */}
-            <Canvas
-              points={points}
-              shapes={shapes}
-              selectedPointId={selectedPointId}
-              selectedShapeId={selectedShapeId}
-              activeTool={activeTool}
-              settings={settings}
-              polygonSides={polygonSides}
-              rectangleMode={rectangleMode}
-              bezierSegments={bezierSegments}
-              bezierClosed={bezierClosed}
-              paramArcStartPointId={paramArcStartPointId}
-              onSetParamArcStartPointId={setParamArcStartPointId}
-              arcStartAngle={arcStartAngle}
-              arcEndAngle={arcEndAngle}
-              arcRadius={arcRadius}
-              pickingArcRadius={pickingArcRadius}
-              radiusPickPoints={radiusPickPoints}
-              onSetRadiusPickPoints={setRadiusPickPoints}
-              onSelectPoint={setSelectedPointId}
-              onSelectShape={setSelectedShapeId}
-              onSelectTool={(tool) => {
-                setActiveTool(tool);
-                if (tool !== 'select' && tool !== 'move_background') {
-                  setSelectedPointId(null);
-                  setSelectedShapeId(null);
-                  setSelectedPathAnnotationId(null);
-                  setSelectedRightAngleMarkId(null);
-                }
-              }}
-              onAddPoint={handleAddPoint}
-              onUpdatePointCoord={handleUpdatePointCoord}
-              onUpdatePoint={handleUpdatePoint}
-              onAddShape={handleAddShape}
-              onUpdateShape={handleUpdateShape}
-              nextPointLabel={nextPointLabel}
-              svgRef={svgRef}
-              polylinePoints={polylinePoints}
-              onSetPolylinePoints={setPolylinePoints}
-              onFinishPolyline={handleFinishPolyline}
-              bgImage={bgImage}
-              onUpdateBgImage={setBgImage}
-              globalLabelDistance={globalLabelDistance}
-              pathAnnotations={pathAnnotations}
-              selectedPathAnnotationId={selectedPathAnnotationId}
-              onSelectPathAnnotation={setSelectedPathAnnotationId}
-              onAddPathAnnotation={handleAddPathAnnotation}
-              rightAngleMarks={rightAngleMarks}
-              selectedRightAngleMarkId={selectedRightAngleMarkId}
-              onSelectRightAngleMark={setSelectedRightAngleMarkId}
-              onAddRightAngleMark={handleAddRightAngleMark}
-              onUpdateRightAngleMark={handleUpdateRightAngleMark}
-              showWatermark={showWatermark}
-            />
+            {/* Column 2: Middle Canvas Area — bọc thêm thanh công cụ ngang (GeometryToolbar) phía trên canvas */}
+            <div className="flex-1 h-full flex flex-col overflow-hidden">
+              <GeometryToolbar
+                activeTool={activeTool}
+                onSelectTool={(tool) => {
+                  setActiveTool(tool);
+                  if (tool !== 'select' && tool !== 'move_background') {
+                    setSelectedPointId(null);
+                    setSelectedShapeId(null);
+                    setSelectedPathAnnotationId(null);
+                    setSelectedRightAngleMarkId(null);
+                  }
+                }}
+              />
+              <div className="flex-1 overflow-hidden relative flex">
+                <Canvas
+                  points={points}
+                  shapes={shapes}
+                  selectedPointId={selectedPointId}
+                  selectedShapeId={selectedShapeId}
+                  activeTool={activeTool}
+                  settings={settings}
+                  polygonSides={polygonSides}
+                  rectangleMode={rectangleMode}
+                  bezierSegments={bezierSegments}
+                  bezierClosed={bezierClosed}
+                  paramArcStartPointId={paramArcStartPointId}
+                  onSetParamArcStartPointId={setParamArcStartPointId}
+                  arcStartAngle={arcStartAngle}
+                  arcEndAngle={arcEndAngle}
+                  arcRadius={arcRadius}
+                  pickingArcRadius={pickingArcRadius}
+                  radiusPickPoints={radiusPickPoints}
+                  onSetRadiusPickPoints={setRadiusPickPoints}
+                  onSelectPoint={setSelectedPointId}
+                  onSelectShape={setSelectedShapeId}
+                  onSelectTool={(tool) => {
+                    setActiveTool(tool);
+                    if (tool !== 'select' && tool !== 'move_background') {
+                      setSelectedPointId(null);
+                      setSelectedShapeId(null);
+                      setSelectedPathAnnotationId(null);
+                      setSelectedRightAngleMarkId(null);
+                    }
+                  }}
+                  onAddPoint={handleAddPoint}
+                  onUpdatePointCoord={handleUpdatePointCoord}
+                  onUpdatePoint={handleUpdatePoint}
+                  onAddShape={handleAddShape}
+                  onUpdateShape={handleUpdateShape}
+                  nextPointLabel={nextPointLabel}
+                  svgRef={svgRef}
+                  polylinePoints={polylinePoints}
+                  onSetPolylinePoints={setPolylinePoints}
+                  onFinishPolyline={handleFinishPolyline}
+                  bgImage={bgImage}
+                  onUpdateBgImage={setBgImage}
+                  globalLabelDistance={globalLabelDistance}
+                  pathAnnotations={pathAnnotations}
+                  selectedPathAnnotationId={selectedPathAnnotationId}
+                  onSelectPathAnnotation={setSelectedPathAnnotationId}
+                  onAddPathAnnotation={handleAddPathAnnotation}
+                  rightAngleMarks={rightAngleMarks}
+                  selectedRightAngleMarkId={selectedRightAngleMarkId}
+                  onSelectRightAngleMark={setSelectedRightAngleMarkId}
+                  onAddRightAngleMark={handleAddRightAngleMark}
+                  onUpdateRightAngleMark={handleUpdateRightAngleMark}
+                  showWatermark={showWatermark}
+                />
+              </div>
+            </div>
 
             {/* Column 3: Right Sidebar (~330px) */}
             <RightSidebar
