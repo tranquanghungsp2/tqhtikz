@@ -239,6 +239,9 @@ export function generateTikZCodeWithLineMap(
     `(${formatNumber(p.x)}, ${formatNumber(p.y)})`;
 
   const coordFor = (p: GeoPoint): string => {
+    if (options.useNamedCoordinates === false) {
+      return rawCoord(p);
+    }
     return p.hidden ? rawCoord(p) : `(${getTikZCoordName(p)})`;
   };
 
@@ -267,7 +270,7 @@ export function generateTikZCodeWithLineMap(
   }
 
   const visiblePoints = points.filter((p) => !p.hidden);
-  if (visiblePoints.length > 0) {
+  if (options.useNamedCoordinates !== false && visiblePoints.length > 0) {
     lines.push('');
     lines.push('  % --- Toạ độ điểm có nhãn ---');
     visiblePoints.forEach((p) => {
@@ -703,19 +706,20 @@ export function generateTikZCodeWithLineMap(
       lines.push('  % --- Điểm phụ không nhãn ---');
       for (const pt of visibleUnlabeledPoints) {
         if (pt.style?.pointStyle === 'hidden') continue;
+        const ptCoordStr = options.useNamedCoordinates === false ? rawCoord(pt) : `(${getTikZCoordName(pt)})`;
         if (pt.style?.pointStyle === 'circle') {
-          lines.push(`  \\draw[fill=white] (${getTikZCoordName(pt)}) circle (1.5pt);`);
+          lines.push(`  \\draw[fill=white] ${ptCoordStr} circle (1.5pt);`);
         } else if (pt.style?.pointStyle === 'cross') {
-          lines.push(`  \\draw (${getTikZCoordName(pt)}) +(-2pt,-2pt) -- +(2pt,2pt) +(-2pt,2pt) -- +(2pt,-2pt);`);
+          lines.push(`  \\draw ${ptCoordStr} +(-2pt,-2pt) -- +(2pt,2pt) +(-2pt,2pt) -- +(2pt,-2pt);`);
         } else {
-          lines.push(`  \\fill (${getTikZCoordName(pt)}) circle (1.5pt);`);
+          lines.push(`  \\fill ${ptCoordStr} circle (1.5pt);`);
         }
       }
     }
 
     // Xuất nhóm các điểm có nhãn dùng \foreach
     if (visibleLabeledPoints.length > 0) {
-      if (options.includePoints && options.includeLabels) {
+      if (options.includePoints && options.includeLabels && options.useNamedCoordinates !== false) {
         const groupedByDistance = new Map<number, GeoPoint[]>();
         visibleLabeledPoints.forEach((pt) => {
           const dist = Math.round((pt.labelDistance ?? 8) * 10) / 10;
@@ -744,24 +748,25 @@ export function generateTikZCodeWithLineMap(
             });
         }
       } else {
-        // Fallback lẻ tẻ nếu chỉ bật nhãn hoặc chỉ bật điểm
+        // Fallback lẻ tẻ nếu chỉ bật nhãn hoặc chỉ bật điểm, hoặc useNamedCoordinates === false
         lines.push('');
         lines.push('  % --- Nhãn hoặc điểm riêng lẻ ---');
         for (const pt of visibleLabeledPoints) {
+          const ptCoordStr = options.useNamedCoordinates === false ? rawCoord(pt) : `(${getTikZCoordName(pt)})`;
           if (options.includePoints && pt.style?.pointStyle !== 'hidden') {
             if (pt.style?.pointStyle === 'circle') {
-              lines.push(`  \\draw[fill=white] (${getTikZCoordName(pt)}) circle (1.5pt);`);
+              lines.push(`  \\draw[fill=white] ${ptCoordStr} circle (1.5pt);`);
             } else if (pt.style?.pointStyle === 'cross') {
-              lines.push(`  \\draw (${getTikZCoordName(pt)}) +(-2pt,-2pt) -- +(2pt,2pt) +(-2pt,2pt) -- +(2pt,-2pt);`);
+              lines.push(`  \\draw ${ptCoordStr} +(-2pt,-2pt) -- +(2pt,2pt) +(-2pt,2pt) -- +(2pt,-2pt);`);
             } else {
-              lines.push(`  \\fill (${getTikZCoordName(pt)}) circle (1.5pt);`);
+              lines.push(`  \\fill ${ptCoordStr} circle (1.5pt);`);
             }
           }
           if (options.includeLabels) {
             const { angle, distance } = pt.labelAngleDeg !== undefined && pt.labelDistance !== undefined
               ? { angle: pt.labelAngleDeg, distance: pt.labelDistance }
               : { angle: 45, distance: 8 };
-            lines.push(`  \\node at ($(${getTikZCoordName(pt)}) + (${formatNumber(angle)}:${formatNumber(distance)}pt)$) {${getMathLabel(pt.label)}};`);
+            lines.push(`  \\node at (${ptCoordStr} + (${formatNumber(angle)}:${formatNumber(distance)}pt)$) {${getMathLabel(pt.label)}};`);
           }
         }
       }
@@ -776,7 +781,8 @@ export function generateTikZCodeWithLineMap(
     // "right angle=X--Y--Z" đọc theo TÊN ĐIỂM THUẦN, KHÔNG bọc ngoặc — khác với coordFor()
     // (vốn dùng cho \draw (A)--(B) thông thường, luôn bọc ngoặc). Chỉ điểm ẨN mới cần ngoặc,
     // vì lúc đó phải in toạ độ số thô "(x, y)" (1 toạ độ literal thực sự cần ngoặc).
-    const tokForAngleMark = (p: GeoPoint) => (p.hidden ? rawCoord(p) : getTikZCoordName(p));
+    const tokForAngleMark = (p: GeoPoint) =>
+      (p.hidden || options.useNamedCoordinates === false) ? rawCoord(p) : getTikZCoordName(p);
     rightAngleMarks.forEach((mark) => {
       const p1 = pointsMap.get(mark.point1Id);
       const vertex = pointsMap.get(mark.vertexId);
