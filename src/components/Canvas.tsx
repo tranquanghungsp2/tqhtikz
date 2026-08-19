@@ -2093,17 +2093,58 @@ export const Canvas: React.FC<CanvasProps> = ({
       }
       let finalWx = wx;
       let finalWy = wy;
-      // Giữ Shift khi kéo 1 điểm đã có sẵn: nếu điểm đó CHỈ nối với đúng 1 điểm khác (VD: B
-      // của đoạn AB) thì khoá góc theo đúng điểm đó (giống hệt cơ chế lúc vẽ mới) — kéo B thì
-      // AB giữ nguyên góc đã có, chỉ đổi độ dài. Nếu điểm nối với >1 điểm khác (đỉnh chung
-      // của nhiều cạnh, VD đỉnh giữa của đường gấp khúc) thì KHÔNG khoá (mỗi cạnh muốn 1 góc
-      // khác nhau, không thể thoả cả hai cùng lúc bằng 1 điểm) — giữ hành vi kéo tự do như cũ.
+      // Giữ Shift khi kéo 1 điểm đã có sẵn: xét TẤT CẢ các cạnh nối tới điểm đó, lọc ra
+      // những cạnh mà hướng (từ hàng xóm tới vị trí chuột mới) đang GẦN 0/90/180/270°
+      // (trong ngưỡng cho phép). Nếu có TỪ 2 CẠNH ĐỦ ĐIỀU KIỆN trở lên (VD: A của hình thang
+      // vuông, nối cả B lẫn D, cả AB lẫn AD đều đang gần trục) — điểm phải thoả ĐỒNG THỜI cả
+      // 2, tức nằm đúng tại GIAO ĐIỂM của 2 đường chuẩn đó (không chỉ khoá 1 cạnh rồi bỏ mặc
+      // cạnh kia). Nếu chỉ 1 cạnh đủ điều kiện, khoá theo đúng cạnh đó. Không cạnh nào đủ điều
+      // kiện thì kéo tự do như cũ.
       if (isShiftHeld) {
         const neighbors = findNeighborPointsOf(draggingPointId);
-        if (neighbors.length === 1) {
-          const snapped = snapToAxisAngle(neighbors[0], { x: wx, y: wy });
-          finalWx = snapped.x;
-          finalWy = snapped.y;
+        const qualifying: Array<{ neighbor: GeoPoint; nearest90: number }> = [];
+        for (const neighbor of neighbors) {
+          const dx = wx - neighbor.x;
+          const dy = wy - neighbor.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance < 1e-6) continue;
+          const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
+          const nearest90 = Math.round(angleDeg / 90) * 90;
+          const diff = Math.abs(angleDeg - nearest90);
+          if (diff <= SEGMENT_SNAP_THRESHOLD_DEG) {
+            qualifying.push({ neighbor, nearest90 });
+          }
+        }
+
+        if (qualifying.length >= 2) {
+          const [c1, c2] = qualifying;
+          const rad1 = (c1.nearest90 * Math.PI) / 180;
+          const rad2 = (c2.nearest90 * Math.PI) / 180;
+          const dir1 = { x: Math.cos(rad1), y: Math.sin(rad1) };
+          const dir2 = { x: Math.cos(rad2), y: Math.sin(rad2) };
+          const denom = dir1.x * dir2.y - dir1.y * dir2.x;
+          if (Math.abs(denom) > 1e-9) {
+            // 2 đường chuẩn không song song -> điểm phải là giao điểm của cả 2.
+            const dx = c2.neighbor.x - c1.neighbor.x;
+            const dy = c2.neighbor.y - c1.neighbor.y;
+            const t = (dx * dir2.y - dy * dir2.x) / denom;
+            finalWx = c1.neighbor.x + t * dir1.x;
+            finalWy = c1.neighbor.y + t * dir1.y;
+          } else {
+            // 2 đường chuẩn song song (không có giao điểm duy nhất) -> đành khoá theo cạnh
+            // gần ngưỡng nhất trong 2 cạnh đó.
+            const single = qualifying[0];
+            const distance = Math.hypot(wx - single.neighbor.x, wy - single.neighbor.y);
+            const rad = (single.nearest90 * Math.PI) / 180;
+            finalWx = single.neighbor.x + Math.cos(rad) * distance;
+            finalWy = single.neighbor.y + Math.sin(rad) * distance;
+          }
+        } else if (qualifying.length === 1) {
+          const single = qualifying[0];
+          const distance = Math.hypot(wx - single.neighbor.x, wy - single.neighbor.y);
+          const rad = (single.nearest90 * Math.PI) / 180;
+          finalWx = single.neighbor.x + Math.cos(rad) * distance;
+          finalWy = single.neighbor.y + Math.sin(rad) * distance;
         }
       }
       onUpdatePointCoord(draggingPointId, finalWx, finalWy);
