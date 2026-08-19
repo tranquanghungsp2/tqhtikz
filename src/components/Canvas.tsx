@@ -99,6 +99,7 @@ interface CanvasProps {
   onSelectRightAngleMark: (id: string | null) => void;
   onAddRightAngleMark: (mark: RightAngleMark) => void;
   onUpdateRightAngleMark?: (id: string, updates: Partial<RightAngleMark>) => void;
+  showWatermark?: boolean;
 }
 
 const EDGE_SHAPE_TYPES = new Set(['rectangle', 'rounded_rectangle', 'square', 'polyline']);
@@ -147,6 +148,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   onSelectRightAngleMark,
   onAddRightAngleMark,
   onUpdateRightAngleMark,
+  showWatermark,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -4057,6 +4059,28 @@ export const Canvas: React.FC<CanvasProps> = ({
 
         {/* Layer 3: Geometric Points & Labels */}
         <g id="points-layer">{renderPoints()}</g>
+
+        {/* Watermark — chỉ hiện khi tài khoản đã đăng nhập nhưng chưa được duyệt.
+            Dùng pattern tile trong không gian màn hình (userSpaceOnUse mặc định, không gắn
+            theo world coords) nên không bị ảnh hưởng bởi pan/zoom, luôn phủ kín khung nhìn. */}
+        {showWatermark && (
+          <>
+            <defs>
+              <pattern
+                id="watermark-pattern"
+                width="240"
+                height="130"
+                patternUnits="userSpaceOnUse"
+                patternTransform="rotate(-28)"
+              >
+                <text x="0" y="70" fontSize="16" fontWeight="700" fill="#64748b" opacity="0.22">
+                  Trần Quang Hùng
+                </text>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#watermark-pattern)" className="pointer-events-none" />
+          </>
+        )}
       </svg>
 
       {/* Top-Left Zoom Controls */}
