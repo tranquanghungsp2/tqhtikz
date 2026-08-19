@@ -975,7 +975,9 @@ export const Canvas: React.FC<CanvasProps> = ({
     // Giữ Shift khi đang chờ chọn ĐIỂM THỨ HAI của tool "Đoạn thẳng" là để bắt góc
     // 0/90/180/270° (snap), KHÔNG phải để pan canvas — nên bỏ qua hành vi pan-bằng-Shift
     // đúng lúc này, để click vẫn chốt điểm cuối bình thường.
-    const shiftIsForSegmentSnap = activeTool === 'segment' && tempPoints.length === 1;
+    const shiftIsForSegmentSnap =
+      (activeTool === 'segment' && tempPoints.length === 1) ||
+      (activeTool === 'polyline' && polylinePoints.length > 0);
     if (e.button === 1 || (e.shiftKey && !shiftIsForSegmentSnap)) {
       e.preventDefault();
       setIsPanning(true);
@@ -1186,7 +1188,18 @@ export const Canvas: React.FC<CanvasProps> = ({
         onFinishPolyline();
         return;
       }
-      const pt = getOrCreatePoint(sx, sy, wx, wy);
+      // Giữ Shift: canh đoạn MỚI (từ điểm liền trước tới điểm sắp đặt) về 0/90/180/270°.
+      let finalWx = wx;
+      let finalWy = wy;
+      if (isShiftHeld && polylinePoints.length > 0) {
+        const lastPt = pointsMap.get(polylinePoints[polylinePoints.length - 1]);
+        if (lastPt) {
+          const snapped = snapToAxisAngle(lastPt, { x: wx, y: wy });
+          finalWx = snapped.x;
+          finalWy = snapped.y;
+        }
+      }
+      const pt = getOrCreatePoint(sx, sy, finalWx, finalWy);
       if (polylinePoints.length > 0 && pt.id === polylinePoints[0]) {
         // Closed polyline
         const newShape: GeoShape = {
@@ -2788,6 +2801,16 @@ export const Canvas: React.FC<CanvasProps> = ({
           .join(' ');
         const lastPt = placedPts[placedPts.length - 1];
         const sLast = worldToScreen(lastPt.x, lastPt.y, viewport);
+
+        let previewEndW = mouseW;
+        let isSnapping = false;
+        if (isShiftHeld) {
+          const snapped = snapToAxisAngle(lastPt, mouseW);
+          isSnapping = snapped.x !== mouseW.x || snapped.y !== mouseW.y;
+          previewEndW = snapped;
+        }
+        const sEnd = worldToScreen(previewEndW.x, previewEndW.y, viewport);
+
         return (
           <g>
             {placedPts.length > 1 && (
@@ -2802,9 +2825,9 @@ export const Canvas: React.FC<CanvasProps> = ({
             <line
               x1={sLast.x}
               y1={sLast.y}
-              x2={mouseS.x}
-              y2={mouseS.y}
-              stroke={previewColor}
+              x2={sEnd.x}
+              y2={sEnd.y}
+              stroke={isSnapping ? '#059669' : previewColor}
               strokeWidth={1.5}
               strokeDasharray="5 4"
             />
