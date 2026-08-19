@@ -1694,24 +1694,36 @@ export const Canvas: React.FC<CanvasProps> = ({
         const { endPoint } = computePerpendicularEndPoint(refPts.p1, refPts.p2, through, { x: wx, y: wy });
 
         // Nếu bấm gần 1 ĐIỂM có sẵn — dùng luôn điểm đó, không tạo điểm mới (giống mọi tool khác).
-        // Nếu không trúng điểm nhưng gần 1 ĐƯỜNG có sẵn khác — bắt toạ độ theo đúng đường đó,
-        // giống hệt cách "điểm đi qua" đang bắt ở Bước 2. Không trúng gì cả thì dùng toạ độ
-        // đã tính theo phép chiếu vuông góc như trước.
+        // Nếu không trúng điểm nhưng gần 1 ĐƯỜNG có sẵn khác — tạo điểm RÀNG BUỘC nằm trên
+        // đúng đường đó (derivedFrom: pointOnLine), y hệt cơ chế tool "Điểm trên đường" —
+        // để sau này kéo điểm này, nó luôn tự trượt dọc theo đường, không bay ra khỏi đường.
+        // Không trúng gì cả thì dùng toạ độ đã tính theo phép chiếu vuông góc như trước.
         const nearestExisting = findNearestPoint(sx, sy, points, viewport, 12);
         let endPt: GeoPoint;
         if (nearestExisting) {
           endPt = nearestExisting;
         } else {
-          const onLine = findPointOnAnyLine(sx, sy);
-          const finalCoord = onLine ?? endPoint;
-          endPt = {
-            id: `p_${Date.now()}_perp`,
-            label: nextPointLabel,
-            x: finalCoord.x,
-            y: finalCoord.y,
-            labelPos: 'auto',
-            style: { color: '#16233a', pointStyle: 'dot' },
-          };
+          const hit = findLineForConstrainedPoint(sx, sy);
+          if (hit) {
+            endPt = {
+              id: `p_${Date.now()}_perp`,
+              label: nextPointLabel,
+              x: hit.x,
+              y: hit.y,
+              labelPos: 'auto',
+              style: { color: '#f59e0b', pointStyle: 'dot' },
+              derivedFrom: { type: 'pointOnLine', shapeId: hit.shapeId, t: hit.t, edgeIndex: hit.edgeIndex },
+            };
+          } else {
+            endPt = {
+              id: `p_${Date.now()}_perp`,
+              label: nextPointLabel,
+              x: endPoint.x,
+              y: endPoint.y,
+              labelPos: 'auto',
+              style: { color: '#16233a', pointStyle: 'dot' },
+            };
+          }
           onAddPoint(endPt);
         }
 
@@ -3295,7 +3307,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         // Cho preview hiện đúng vị trí sẽ chốt thật (ưu tiên điểm/đường có sẵn gần chuột),
         // để không bị lệch so với kết quả sau khi click.
         const nearestExistingPreview = findNearestPoint(mouseS.x, mouseS.y, points, viewport, 12);
-        const onLinePreview = nearestExistingPreview ? null : findPointOnAnyLine(mouseS.x, mouseS.y);
+        const onLinePreview = nearestExistingPreview ? null : findLineForConstrainedPoint(mouseS.x, mouseS.y);
         const previewEndWorld = nearestExistingPreview ?? onLinePreview ?? endPoint;
         const sThrough = worldToScreen(through.x, through.y, viewport);
         const sEnd = worldToScreen(previewEndWorld.x, previewEndWorld.y, viewport);
