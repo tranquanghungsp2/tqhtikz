@@ -1143,12 +1143,21 @@ export const Canvas: React.FC<CanvasProps> = ({
   // Mouse Event Handlers for Canvas SVG
   // ----------------------------------------------------
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
-    // Giữ Shift khi đang chờ chọn ĐIỂM THỨ HAI của tool "Đoạn thẳng" là để bắt góc
-    // 0/90/180/270° (snap), KHÔNG phải để pan canvas — nên bỏ qua hành vi pan-bằng-Shift
-    // đúng lúc này, để click vẫn chốt điểm cuối bình thường.
-    const shiftIsForSegmentSnap =
+    // Giữ Shift khi đang chờ chọn ĐIỂM THỨ HAI của tool "Đoạn thẳng"/"Đường gấp khúc" là để
+    // bắt góc 0/90/180/270° (snap), KHÔNG phải để pan canvas. Tương tự, giữ Shift để KÉO 1
+    // điểm có sẵn bằng tool "Chọn" cũng là để khoá góc, không phải pan — cần kiểm tra TRƯỚC
+    // xem cú bấm này có trúng 1 điểm có sẵn không, để không bị hành vi pan-bằng-Shift cướp mất.
+    let shiftIsForSegmentSnap =
       (activeTool === 'segment' && tempPoints.length === 1) ||
       (activeTool === 'polyline' && polylinePoints.length > 0);
+    if (activeTool === 'select' && e.shiftKey && svgRef.current) {
+      const rectCheck = svgRef.current.getBoundingClientRect();
+      const sxCheck = e.clientX - rectCheck.left;
+      const syCheck = e.clientY - rectCheck.top;
+      if (findNearestPoint(sxCheck, syCheck, points, viewport, 14)) {
+        shiftIsForSegmentSnap = true;
+      }
+    }
     if (e.button === 1 || (e.shiftKey && !shiftIsForSegmentSnap)) {
       e.preventDefault();
       setIsPanning(true);
