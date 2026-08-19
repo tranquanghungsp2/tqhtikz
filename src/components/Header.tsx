@@ -74,7 +74,18 @@ export const Header: React.FC<HeaderProps> = ({
   const [savedDrawings, setSavedDrawings] = useState<SavedDrawing[]>([]);
   const [saveNameInput, setSaveNameInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showSavedBadge, setShowSavedBadge] = useState(false);
   const saveMenuRef = React.useRef<HTMLDivElement>(null);
+
+  // "Đang lưu..." hiện liên tục cho tới khi lưu xong; "Đã lưu" chỉ hiện thoáng qua 2s rồi tự ẩn.
+  React.useEffect(() => {
+    if (autoSaveStatus === 'saved') {
+      setShowSavedBadge(true);
+      const t = setTimeout(() => setShowSavedBadge(false), 2000);
+      return () => clearTimeout(t);
+    }
+    setShowSavedBadge(false);
+  }, [autoSaveStatus]);
 
   // Bấm ra ngoài khu vực dropdown Lưu/Tải thì tự đóng, không cần bấm lại đúng nút mới đóng được.
   React.useEffect(() => {
@@ -168,7 +179,23 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="h-10 bg-white border-b border-[#dbe4ee] px-4 flex items-center justify-between select-none z-30 shrink-0">
+    <header className="relative h-10 bg-white border-b border-[#dbe4ee] px-4 flex items-center justify-between select-none z-30 shrink-0">
+      {/* Trạng thái tự động lưu — canh giữa tuyệt đối trên thanh Header, không phụ thuộc layout 2 bên */}
+      {currentDrawingName && (autoSaveStatus === 'saving' || showSavedBadge || autoSaveStatus === 'error') && (
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+          <span
+            className={`text-[11px] font-medium px-2 py-0.5 rounded-full transition-opacity ${
+              autoSaveStatus === 'saving'
+                ? 'text-[#5b6b82] bg-[#f1f5f9]'
+                : autoSaveStatus === 'error'
+                ? 'text-[#b91c1c] bg-[#fee2e2]'
+                : 'text-[#059669] bg-[#ecfdf5]'
+            }`}
+          >
+            {autoSaveStatus === 'saving' ? 'Đang lưu...' : autoSaveStatus === 'error' ? 'Lỗi lưu' : 'Đã lưu'}
+          </span>
+        </div>
+      )}
       {/* Left: App Title */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
@@ -221,19 +248,6 @@ export const Header: React.FC<HeaderProps> = ({
                 {user ? (currentDrawingName ? currentDrawingName : 'Lưu / Tải hình') : 'Đăng nhập để lưu'}
               </span>
             </button>
-            {currentDrawingName && autoSaveStatus !== 'idle' && (
-              <span
-                className={`ml-1.5 text-[10px] font-medium ${
-                  autoSaveStatus === 'saving'
-                    ? 'text-[#94a3b8]'
-                    : autoSaveStatus === 'saved'
-                    ? 'text-[#059669]'
-                    : 'text-[#b91c1c]'
-                }`}
-              >
-                {autoSaveStatus === 'saving' ? 'Đang lưu...' : autoSaveStatus === 'saved' ? 'Đã lưu' : 'Lỗi lưu'}
-              </span>
-            )}
 
             {showSaveMenu && user && (
               <div className="absolute top-full right-0 mt-1 w-72 bg-white border border-[#dbe4ee] rounded-lg shadow-lg py-2 z-50 px-3 space-y-2">
