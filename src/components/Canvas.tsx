@@ -254,6 +254,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     onSelectTool('select');
   }, [onSelectTool]);
   const [selectedRefShapeId, setSelectedRefShapeId] = useState<string | null>(null);
+  const [selectedRefEdgeIndex, setSelectedRefEdgeIndex] = useState<number | null>(null); // cạnh cụ thể đã chọn (nếu đường chuẩn là đường gấp khúc/HCN/vuông)
   const [axisRef, setAxisRef] = useState<'x' | 'y' | null>(null);
   const [intersectionSelectedShape1, setIntersectionSelectedShape1] = useState<string | null>(null);
   const [intersectionEdgeIndex1, setIntersectionEdgeIndex1] = useState<number | null>(null);
@@ -564,6 +565,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   useEffect(() => {
     setTempPoints([]);
     setSelectedRefShapeId(null);
+    setSelectedRefEdgeIndex(null);
     setAxisRef(null);
     setIntersectionSelectedShape1(null);
     setIntersectionEdgeIndex1(null);
@@ -717,6 +719,10 @@ export const Canvas: React.FC<CanvasProps> = ({
       const p2 = pointsMap.get(refShape.endPointId);
       if (p1 && p2) return { p1, p2 };
     }
+    if (EDGE_SHAPE_TYPES.has(refShape.type) && selectedRefEdgeIndex !== null) {
+      const edge = getEdgeByIndex(refShape, selectedRefEdgeIndex, pointsMap);
+      if (edge) return { p1: edge.p1, p2: edge.p2 };
+    }
     return null;
   };
 
@@ -848,6 +854,83 @@ export const Canvas: React.FC<CanvasProps> = ({
       }
     }
     return best;
+  };
+
+  // Tìm giao điểm của 2 hình bất kỳ có vị trí giao nhau gần con trỏ chuột nhất (bán kính 14px)
+  const findNearIntersectionForPointTool = (sx: number, sy: number): { x: number; y: number; s1: GeoShape; s2: GeoShape; edgeIdx1?: number; edgeIdx2?: number } | null => {
+    let bestIntersection: { x: number; y: number; s1: GeoShape; s2: GeoShape; edgeIdx1?: number; edgeIdx2?: number } | null = null;
+    let bestDistPx = 14;
+
+    // Duyệt qua tất cả các cặp hình (s1, s2) khác nhau
+    for (let i = 0; i < shapes.length; i++) {
+      const s1 = shapes[i];
+      for (let j = i + 1; j < shapes.length; j++) {
+        const s2 = shapes[j];
+        if (s1.id === s2.id) continue;
+
+        // Tính các điểm giao nhau giữa 2 hình
+        let interPoints: Array<{ x: number; y: number; edgeIdx1?: number; edgeIdx2?: number }> = [];
+
+        const isS1Edge = EDGE_SHAPE_TYPES.has(s1.type);
+        const isS2Edge = EDGE_SHAPE_TYPES.has(s2.type);
+
+        if (isS1Edge && isS2Edge) {
+          // Giao nhiều cạnh x nhiều cạnh
+          const edges1 = getShapeEdges(s1, pointsMap);
+          const edges2 = getShapeEdges(s2, pointsMap);
+          edges1.forEach((e1, idx1) => {
+            edges2.forEach((e2, idx2) => {
+              const pt = intersectEdgeEdge(e1, e2);
+              if (pt) {
+                interPoints.push({ x: pt.x, y: pt.y, edgeIdx1: idx1, edgeIdx2: idx2 });
+              }
+            });
+          });
+        } else if (isS1Edge) {
+          // Giao nhiều cạnh s1 x s2 (không phải edge type)
+          const edges1 = getShapeEdges(s1, pointsMap);
+          edges1.forEach((e1, idx1) => {
+            const pts = findEdgeShapeIntersections(e1, s2, pointsMap);
+            pts.forEach((pt) => {
+              interPoints.push({ x: pt.x, y: pt.y, edgeIdx1: idx1 });
+            });
+          });
+        } else if (isS2Edge) {
+          // Giao s1 (không phải edge type) x nhiều cạnh s2
+          const edges2 = getShapeEdges(s2, pointsMap);
+          edges2.forEach((e2, idx2) => {
+            const pts = findEdgeShapeIntersections(e2, s1, pointsMap);
+            pts.forEach((pt) => {
+              interPoints.push({ x: pt.x, y: pt.y, edgeIdx2: idx2 });
+            });
+          });
+        } else {
+          // Giao thông thường s1 x s2
+          const pts = findShapeIntersections(s1, s2, pointsMap);
+          pts.forEach((pt) => {
+            interPoints.push({ x: pt.x, y: pt.y });
+          });
+        }
+
+        // Đánh giá giao điểm nào gần vị trí bấm của người dùng nhất
+        interPoints.forEach((ip) => {
+          const sIp = worldToScreen(ip.x, ip.y, viewport);
+          const distPx = Math.hypot(sIp.x - sx, sIp.y - sy);
+          if (distPx < bestDistPx) {
+            bestDistPx = distPx;
+            bestIntersection = {
+              x: ip.x,
+              y: ip.y,
+              s1,
+              s2,
+              edgeIdx1: ip.edgeIdx1,
+              edgeIdx2: ip.edgeIdx2,
+            };
+          }
+        });
+      }
+    }
+    return bestIntersection;
   };
 
   const EDGE_SHAPE_TYPES = new Set(['rectangle', 'rounded_rectangle', 'square', 'polyline']);
@@ -1043,15 +1126,36 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     // ----------------- TOOL: POINT -----------------
     if (activeTool === 'point') {
-      const pt: GeoPoint = {
-        id: `p_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        label: nextPointLabel,
-        x: wx,
-        y: wy,
-        labelPos: 'auto',
-        style: { color: '#16233a', pointStyle: 'dot' },
-      };
-      onAddPoint(pt);
+      const inter = findNearIntersectionForPointTool(sx, sy);
+      if (inter) {
+        const pt: GeoPoint = {
+          id: `p_${Date.now()}_inter_auto`,
+          label: nextPointLabel,
+          x: inter.x,
+          y: inter.y,
+          labelPos: 'above right',
+          style: { color: '#b91c1c', pointStyle: 'dot' },
+          derivedFrom: {
+            type: 'intersection',
+            shapeId1: inter.s1.id,
+            shapeId2: inter.s2.id,
+            index: 0,
+            edgeIndex1: inter.edgeIdx1,
+            edgeIndex2: inter.edgeIdx2,
+          },
+        };
+        onAddPoint(pt);
+      } else {
+        const pt: GeoPoint = {
+          id: `p_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          label: nextPointLabel,
+          x: wx,
+          y: wy,
+          labelPos: 'auto',
+          style: { color: '#16233a', pointStyle: 'dot' },
+        };
+        onAddPoint(pt);
+      }
       return;
     }
 
@@ -1565,6 +1669,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         onAddShape(newShape);
         setTempPoints([]);
         setSelectedRefShapeId(null);
+        setSelectedRefEdgeIndex(null);
         setAxisRef(null);
       }
       return;
@@ -1607,6 +1712,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         onAddShape(newShape);
         setTempPoints([]);
         setSelectedRefShapeId(null);
+        setSelectedRefEdgeIndex(null);
         setAxisRef(null);
       }
       return;
@@ -1777,6 +1883,14 @@ export const Canvas: React.FC<CanvasProps> = ({
     if (activeTool === 'parallel' || activeTool === 'perpendicular') {
       if (!selectedRefShapeId && !axisRef) {
         setSelectedRefShapeId(shapeId);
+        const clickedShape = shapes.find((s) => s.id === shapeId);
+        if (clickedShape && EDGE_SHAPE_TYPES.has(clickedShape.type)) {
+          const rect = svgRef.current?.getBoundingClientRect();
+          const clickWorld = rect ? screenToWorld(e.clientX - rect.left, e.clientY - rect.top, viewport) : null;
+          setSelectedRefEdgeIndex(clickWorld ? getClickedEdgeIndex(clickedShape, clickWorld, pointsMap) : null);
+        } else {
+          setSelectedRefEdgeIndex(null);
+        }
         return;
       }
     }
@@ -2023,11 +2137,11 @@ export const Canvas: React.FC<CanvasProps> = ({
           ? 'Bước 1/2: Nhấp chọn hình (hoặc 1 cạnh của HCN/gấp khúc) thứ nhất'
           : 'Bước 2/2: Nhấp chọn hình (hoặc 1 cạnh) thứ hai để tự động tính giao điểm';
       case 'parallel':
-        if (!selectedRefShapeId && !axisRef) return 'Bước 1/3: Nhấp chọn 1 đường có sẵn, hoặc nhấp vào trục Ox/Oy làm chuẩn';
+        if (!selectedRefShapeId && !axisRef) return 'Bước 1/3: Nhấp chọn 1 đường có sẵn, hoặc 1 cạnh của hình có sẵn, hoặc nhấp vào trục Ox/Oy làm chuẩn';
         if (tempPoints.length === 0) return 'Bước 2/3: Nhấp chọn điểm đi qua (nhấp gần 1 đường có sẵn để điểm nằm đúng trên đường đó)';
         return 'Bước 3/3: Di chuột để chỉnh độ dài song song và nhấp để chốt';
       case 'perpendicular':
-        if (!selectedRefShapeId && !axisRef) return 'Bước 1/3: Nhấp chọn 1 đường có sẵn, hoặc nhấp vào trục Ox/Oy làm chuẩn';
+        if (!selectedRefShapeId && !axisRef) return 'Bước 1/3: Nhấp chọn 1 đường có sẵn, hoặc 1 cạnh của hình có sẵn, hoặc nhấp vào trục Ox/Oy làm chuẩn';
         if (tempPoints.length === 0) return 'Bước 2/3: Nhấp chọn điểm đi qua (nhấp gần 1 đường có sẵn để điểm nằm đúng trên đường đó)';
         return 'Bước 3/3: Di chuột để chỉnh độ dài vuông góc (có dấu vuông góc) và nhấp để chốt';
     }
