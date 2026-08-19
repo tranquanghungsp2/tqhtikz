@@ -227,6 +227,7 @@ export default function App() {
     showAxes: false,
     rulerStep: 1,
     autoLabel: true,
+    drawingMode: 'geometry',
   });
 
   // TikZ Options
@@ -1275,6 +1276,7 @@ export default function App() {
               tikzOptions={tikzOptions}
               onUpdateTikzOptions={(opts) => setTikzOptions((prev) => ({ ...prev, ...opts }))}
               svgRef={svgRef}
+              settings={settings}
             />
           </>
         )}
