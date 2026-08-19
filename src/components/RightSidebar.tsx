@@ -138,6 +138,22 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
     }
   }, [selectedShapeId]);
 
+  // Bỏ phần thụt lề CHUNG nhỏ nhất khỏi 1 khối nhiều dòng — vẫn giữ nguyên thụt lề TƯƠNG ĐỐI
+  // giữa các dòng bên trong khối (ví dụ nội dung con thụt sâu hơn của \foreach{...} vẫn thụt
+  // sâu hơn dòng \foreach cha), chỉ loại bỏ đúng phần dư thừa không cần thiết khi dán ra
+  // ngoài ngữ cảnh gốc (file .tex của người dùng, không có cùng mức thụt lề như bản xem trước).
+  const dedentBlock = (linesArr: string[]): string => {
+    const nonEmpty = linesArr.filter((l) => l.trim().length > 0);
+    if (nonEmpty.length === 0) return linesArr.join('\n');
+    const minIndent = Math.min(
+      ...nonEmpty.map((l) => {
+        const match = l.match(/^ */);
+        return match ? match[0].length : 0;
+      })
+    );
+    return linesArr.map((l) => l.slice(minIndent)).join('\n');
+  };
+
   const handleCopyLineOrBlock = async (idx: number, e: React.MouseEvent) => {
     const linesArray = tikzCode.split('\n');
 
@@ -145,15 +161,16 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
       // Khi giữ Shift + Click: Copy toàn bộ khối từ lastClickedLine đến idx
       const start = Math.min(lastClickedLine, idx);
       const end = Math.max(lastClickedLine, idx);
-      const blockText = linesArray.slice(start, end + 1).join('\n');
+      const blockText = dedentBlock(linesArray.slice(start, end + 1));
 
       await navigator.clipboard.writeText(blockText);
       setCopiedRange({ start, end });
       setCopiedLineIdx(null);
       setTimeout(() => setCopiedRange(null), 1500);
     } else {
-      // Click bình thường: Copy 1 dòng và đặt làm mốc đầu khối
-      await navigator.clipboard.writeText(linesArray[idx] || '');
+      // Click bình thường: Copy 1 dòng (bỏ hết thụt lề gốc, vì đây là 1 dòng đứng riêng lẻ
+      // khi dán ra chỗ khác) và đặt làm mốc đầu khối
+      await navigator.clipboard.writeText((linesArray[idx] || '').trimStart());
       setLastClickedLine(idx);
       setCopiedLineIdx(idx);
       setCopiedRange(null);
