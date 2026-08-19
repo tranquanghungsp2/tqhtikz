@@ -1365,6 +1365,21 @@ export const Canvas: React.FC<CanvasProps> = ({
       }
       const pt = getOrCreatePoint(sx, sy, finalWx, finalWy);
       if (polylinePoints.length > 0 && pt.id === polylinePoints[0]) {
+        // Đóng hình về đúng điểm A có sẵn — bấm trúng điểm A khiến logic snap ở trên
+        // (tính theo wx/wy) bị bỏ qua hoàn toàn vì dùng thẳng toạ độ thật của A.
+        // Nếu đang giữ Shift, chỉnh lại toạ độ của D (điểm liền trước, KHÔNG phải A)
+        // để góc D→A snap đúng 0/90/180/270°, giữ nguyên khoảng cách D-A hiện có.
+        if (isShiftHeld && polylinePoints.length >= 2) {
+          const lastPtId = polylinePoints[polylinePoints.length - 1];
+          const lastPtObj = pointsMap.get(lastPtId);
+          const startPtObj = pointsMap.get(polylinePoints[0]);
+          if (lastPtObj && startPtObj) {
+            const snappedLast = snapToAxisAngle(startPtObj, lastPtObj);
+            if (snappedLast.x !== lastPtObj.x || snappedLast.y !== lastPtObj.y) {
+              onUpdatePointCoord(lastPtObj.id, snappedLast.x, snappedLast.y);
+            }
+          }
+        }
         // Closed polyline
         const newShape: GeoShape = {
           id: `s_poly_${Date.now()}`,
