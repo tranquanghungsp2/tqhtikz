@@ -603,12 +603,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             </div>
           )}
         </div>
-      </div>
 
-      {/* Bottom utility controls */}
-      <div className="p-3 border-t border-[#dbe4ee] bg-white space-y-2.5">
-        {/* Toggle Chế độ vẽ */}
-        <div className="space-y-1.5 pb-2 border-b border-[#dbe4ee]">
+        {/* Chế độ vẽ — chuyển lên đây (cuối vùng cuộn) để lấp khoảng trống bên dưới khung Ảnh nền */}
+        <div className="space-y-1.5">
           <span className="text-[10px] font-semibold text-[#5b6b82] uppercase tracking-wider">
             Chế độ vẽ
           </span>
@@ -637,7 +634,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             </button>
           </div>
         </div>
+      </div>
 
+      {/* Bottom utility controls */}
+      <div className="p-3 border-t border-[#dbe4ee] bg-white space-y-2.5">
         <label className="flex items-center gap-2 text-xs text-[#5b6b82] cursor-pointer hover:text-[#16233a] select-none">
           <input
             id="toggle-grid-checkbox"
