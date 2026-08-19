@@ -773,13 +773,19 @@ export function generateTikZCodeWithLineMap(
   if (rightAngleMarks && rightAngleMarks.length > 0) {
     lines.push('');
     lines.push('  % --- Ký hiệu góc vuông ---');
+    // "right angle=X--Y--Z" đọc theo TÊN ĐIỂM THUẦN, KHÔNG bọc ngoặc — khác với coordFor()
+    // (vốn dùng cho \draw (A)--(B) thông thường, luôn bọc ngoặc). Chỉ điểm ẨN mới cần ngoặc,
+    // vì lúc đó phải in toạ độ số thô "(x, y)" (1 toạ độ literal thực sự cần ngoặc).
+    const tokForAngleMark = (p: GeoPoint) => (p.hidden ? rawCoord(p) : getTikZCoordName(p));
     rightAngleMarks.forEach((mark) => {
       const p1 = pointsMap.get(mark.point1Id);
       const vertex = pointsMap.get(mark.vertexId);
       const p2 = pointsMap.get(mark.point2Id);
       if (p1 && vertex && p2) {
         const r = formatNumber(mark.angleRadiusMm ?? 2.5);
-        lines.push(`  \\draw pic[draw,angle radius=${r}mm]{right angle=${coordFor(p1)}--${coordFor(vertex)}--${coordFor(p2)}};`);
+        lines.push(
+          `  \\draw pic[draw,angle radius=${r}mm]{right angle=${tokForAngleMark(p1)}--${tokForAngleMark(vertex)}--${tokForAngleMark(p2)}};`
+        );
       }
     });
   }
