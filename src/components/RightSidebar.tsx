@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Code2,
   Sliders,
@@ -49,6 +49,7 @@ interface RightSidebarProps {
   onSelectPathAnnotation?: (id: string | null) => void;
   onSelectRightAngleMark?: (id: string | null) => void;
   tikzOptions: TikZExportOptions;
+  isCopyRestricted?: boolean;
   onUpdateTikzOptions: (opts: Partial<TikZExportOptions>) => void;
   svgRef: React.RefObject<SVGSVGElement | null>;
   settings?: AppSettings;
@@ -114,12 +115,20 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   onSelectPathAnnotation,
   onSelectRightAngleMark,
   tikzOptions,
+  isCopyRestricted,
   onUpdateTikzOptions,
   svgRef,
   settings,
 }) => {
   const [activeTab, setActiveTab] = useState<'properties' | 'tikz'>('properties');
   const [copied, setCopied] = useState(false);
+  const [showRestrictedMsg, setShowRestrictedMsg] = useState(false);
+
+  useEffect(() => {
+    if (!showRestrictedMsg) return;
+    const t = setTimeout(() => setShowRestrictedMsg(false), 4000);
+    return () => clearTimeout(t);
+  }, [showRestrictedMsg]);
   const [copiedLineIdx, setCopiedLineIdx] = useState<number | null>(null);
   const [lastClickedLine, setLastClickedLine] = useState<number | null>(null);
   const [copiedRange, setCopiedRange] = useState<{ start: number; end: number } | null>(null);
@@ -163,6 +172,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   };
 
   const handleCopyLineOrBlock = async (idx: number, e: React.MouseEvent) => {
+    if (isCopyRestricted) {
+      setShowRestrictedMsg(true);
+      return;
+    }
     const linesArray = tikzCode.split('\n');
 
     if (e.shiftKey && lastClickedLine !== null) {
@@ -187,6 +200,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   };
 
   const handleCopyCode = async () => {
+    if (isCopyRestricted) {
+      setShowRestrictedMsg(true);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(tikzCode);
       setCopied(true);
@@ -197,6 +214,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   };
 
   const handleDownloadTex = () => {
+    if (isCopyRestricted) {
+      setShowRestrictedMsg(true);
+      return;
+    }
     const blob = new Blob([tikzCode], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1184,6 +1205,13 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
             {/* Code Block Container - Bento Dark Card */}
             <div className="space-y-2 flex-1 flex flex-col">
+              {showRestrictedMsg && (
+                <div className="bg-[#fee2e2] border border-[#fecaca] text-[#991b1b] text-[11px] rounded-md px-3 py-2 leading-relaxed animate-in fade-in slide-in-from-top-2 duration-150">
+                  <p className="font-semibold">Tính năng sao chép đang hạn chế.</p>
+                  <p>Hãy đăng nhập để sử dụng. Liên hệ: Zalo Trần Quang Hùng — 039 683 6800.</p>
+                </div>
+              )}
+
               <div className="flex justify-between items-center">
                 <h3 className="text-[10px] font-bold text-[#5b6b82] uppercase tracking-wider">
                   Mã TikZ Export
