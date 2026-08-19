@@ -7,7 +7,6 @@ import {
   Hexagon,
   Compass,
   Spline,
-  Pipette,
   ChevronDown,
 } from 'lucide-react';
 
@@ -113,7 +112,6 @@ const GROUPS: GroupDef[] = [
     groupLabel: 'Đo & khác',
     tools: [
       { id: 'measure', label: 'Đo & chia đoạn', title: 'Đo khoảng cách giữa 2 điểm, chia đôi/chia 3/chia 4', icon: <span className="font-mono text-xs font-bold w-4 text-center">↔</span> },
-      { id: 'eyedropper', label: 'Lấy mã màu ảnh', title: 'Nhấp vào ảnh nền để lấy mã màu tại vị trí đó (cần đã tải ảnh nền)', icon: <Pipette className="w-4 h-4" /> },
       { id: 'toggle_visibility', label: 'Ẩn/Hiện đối tượng', title: 'Bấm vào 1 điểm hoặc hình để ẩn/hiện (ẩn = không xuất mã TikZ, vẫn mờ trên canvas)', icon: <span className="w-4 h-4 flex items-center justify-center">👁️</span> },
     ],
   },
