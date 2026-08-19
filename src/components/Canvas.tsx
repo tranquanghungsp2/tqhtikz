@@ -1028,14 +1028,29 @@ export const Canvas: React.FC<CanvasProps> = ({
   const getOrCreatePointOnLine = (sx: number, sy: number, wx: number, wy: number): GeoPoint => {
     const nearest = findNearestPoint(sx, sy, points, viewport, 12);
     if (nearest) return nearest;
-    const onLine = findPointOnAnyLine(sx, sy);
-    const finalX = onLine ? onLine.x : wx;
-    const finalY = onLine ? onLine.y : wy;
+    // Bắt vào đường có sẵn phải tạo điểm RÀNG BUỘC thật (derivedFrom: pointOnLine), y hệt
+    // tool "Điểm trên đường" — nếu không, điểm chỉ trông giống nằm trên đường lúc mới tạo,
+    // nhưng kéo phát là bay tự do ngay (đây chính là lỗi đã gặp ở điểm "đi qua" của tool
+    // Vuông góc/Song song, Bước 2).
+    const hit = findLineForConstrainedPoint(sx, sy);
+    if (hit) {
+      const newPoint: GeoPoint = {
+        id: `p_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        label: nextPointLabel,
+        x: hit.x,
+        y: hit.y,
+        labelPos: 'auto',
+        style: { color: '#f59e0b', pointStyle: 'dot' },
+        derivedFrom: { type: 'pointOnLine', shapeId: hit.shapeId, t: hit.t, edgeIndex: hit.edgeIndex },
+      };
+      onAddPoint(newPoint);
+      return newPoint;
+    }
     const newPoint: GeoPoint = {
       id: `p_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       label: nextPointLabel,
-      x: finalX,
-      y: finalY,
+      x: wx,
+      y: wy,
       labelPos: 'auto',
       style: { color: '#16233a', pointStyle: 'dot' },
     };
