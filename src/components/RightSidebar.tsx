@@ -398,6 +398,25 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
 
 
+                {/* Tên điểm neo (pic anchor) */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#5b6b82] uppercase tracking-wider flex items-center gap-1">
+                    <span>⚓ Tên điểm neo (pic anchor):</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedPoint.anchorName || ''}
+                    onChange={(e) =>
+                      onUpdatePoint(selectedPoint.id, { anchorName: e.target.value.trim() || undefined })
+                    }
+                    className="w-full px-3 py-1.5 bg-white border border-[#dbe4ee] rounded-md text-xs font-medium text-[#16233a] focus:outline-none focus:border-[#7c3aed]"
+                    placeholder="VD: dinh, chan..."
+                  />
+                  <p className="text-[10px] text-[#5b6b82] leading-tight">
+                    Dùng làm toạ độ tham chiếu khi tái sử dụng pic (VD: <code className="bg-[#f1f5f9] px-1 rounded text-[#7c3aed]">(-dinh)</code>).
+                  </p>
+                </div>
+
                 {/* Point Style */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-[#5b6b82] uppercase tracking-wider">
@@ -1130,6 +1149,36 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   />
                   <span>Vẽ chấm tròn các điểm</span>
                 </label>
+
+                {/* Tùy chọn xuất dưới dạng TikZ pic (mã nguồn tái sử dụng bằng \pic) */}
+                <div className="pt-2 border-t border-[#e2e8f0] mt-2 space-y-2">
+                  <label className="flex items-center gap-2 text-xs text-[#16233a] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!tikzOptions.exportAsPic}
+                      onChange={(e) => onUpdateTikzOptions({ exportAsPic: e.target.checked })}
+                      className="rounded border-[#cbd5e1] text-[#2f5d99] accent-[#2f5d99] focus:ring-[#2f5d99]"
+                    />
+                    <span className="font-semibold text-[#7c3aed]">Xuất dạng pic tái sử dụng (\tikzset)</span>
+                  </label>
+
+                  {tikzOptions.exportAsPic && (
+                    <div className="pl-5 space-y-1.5 animate-in fade-in duration-150">
+                      <div className="text-[10px] text-[#5b6b82] font-semibold uppercase">Tên pic (Pic Name)</div>
+                      <input
+                        type="text"
+                        value={tikzOptions.picName || ''}
+                        onChange={(e) => onUpdateTikzOptions({ picName: e.target.value })}
+                        placeholder="VD: tree, human, car"
+                        className="w-full text-xs px-2 py-1.5 border border-[#cbd5e1] rounded outline-none focus:border-[#7c3aed]"
+                      />
+                      <p className="text-[10px] text-[#5b6b82] leading-tight">
+                        * Tự động ẩn nhãn/chấm điểm, dùng toạ độ số thô. Các điểm có tên neo sẽ xuất thành 
+                        <code className="bg-[#f1f5f9] px-1 rounded text-[#7c3aed] ml-1">\coordinate (-tên)</code>.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
