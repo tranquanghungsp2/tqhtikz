@@ -1744,8 +1744,67 @@ export const Canvas: React.FC<CanvasProps> = ({
       if (!refPts) return;
 
       if (tempPoints.length === 0) {
-        // Bước 2: chọn điểm đi qua — snap lên đường có sẵn nếu nhấp gần
+        // Bước 2: chọn điểm đi qua — snap lên đường có sẵn nếu nhấp gần, HOẶC dùng nguyên
+        // 1 điểm có sẵn KHÔNG nằm trên đường chuẩn (VD: điểm C ở ngoài đoạn AB — muốn "kẻ
+        // đường cao" từ C xuống AB).
         const pt = getOrCreatePointOnLine(sx, sy, wx, wy);
+
+        // Kiểm tra pt có thực sự nằm TRÊN đường chuẩn không (khoảng cách vuông góc ~ 0).
+        const abx = refPts.p2.x - refPts.p1.x;
+        const aby = refPts.p2.y - refPts.p1.y;
+        const len2 = abx * abx + aby * aby || 1;
+        const tProj = ((pt.x - refPts.p1.x) * abx + (pt.y - refPts.p1.y) * aby) / len2;
+        const projX = refPts.p1.x + tProj * abx;
+        const projY = refPts.p1.y + tProj * aby;
+        const distToRefLine = Math.hypot(pt.x - projX, pt.y - projY);
+
+        if (distToRefLine > 0.02) {
+          // Điểm ĐI QUA không nằm trên đường chuẩn — tự động vẽ luôn đoạn vuông góc chạm
+          // ĐÚNG xuống đường chuẩn tại hình chiếu vuông góc (projX, projY), KHÔNG chờ Bước 3.
+          let endPt: GeoPoint;
+          if (selectedRefShapeId) {
+            endPt = {
+              id: `p_${Date.now()}_perpfoot`,
+              label: nextPointLabel,
+              x: projX,
+              y: projY,
+              labelPos: 'auto',
+              style: { color: '#f59e0b', pointStyle: 'dot' },
+              derivedFrom: {
+                type: 'perpEndOnLine',
+                targetShapeId: selectedRefShapeId,
+                targetEdgeIndex: selectedRefEdgeIndex ?? undefined,
+              },
+            };
+          } else {
+            // Đường chuẩn là trục Ox/Oy — không phải shape kéo được, không cần ràng buộc.
+            endPt = {
+              id: `p_${Date.now()}_perpfoot`,
+              label: nextPointLabel,
+              x: projX,
+              y: projY,
+              labelPos: 'auto',
+              style: { color: '#16233a', pointStyle: 'dot' },
+            };
+          }
+          onAddPoint(endPt);
+
+          const newShape: GeoShape = {
+            id: `s_perp_${Date.now()}`,
+            type: 'perpendicular_line',
+            referenceShapeId: selectedRefShapeId ?? (axisRef === 'x' ? 'axis-x' : 'axis-y'),
+            throughPointId: pt.id,
+            endPointId: endPt.id,
+            showRightAngleMark: true,
+            style: { color: '#059669', strokeWidth: 1.5, dashPattern: 'solid' },
+          };
+          onAddShape(newShape);
+          setSelectedRefShapeId(null);
+          setSelectedRefEdgeIndex(null);
+          setAxisRef(null);
+          return;
+        }
+
         setTempPoints([pt]);
       } else {
         // Bước 3: chốt điểm cuối.
@@ -2804,15 +2863,27 @@ export const Canvas: React.FC<CanvasProps> = ({
           const s1 = worldToScreen(p1.x, p1.y, viewport);
           const s2 = worldToScreen(p2.x, p2.y, viewport);
 
-          // Right angle mark
+          // Right angle mark — vẽ tại điểm THỰC SỰ chạm đường chuẩn (nơi có góc vuông thật).
+          // Nếu "đi qua" (p1) nằm trên đường chuẩn -> đó chính là chỗ chạm, vẽ tại p1 (như cũ).
+          // Nếu "đi qua" nằm NGOÀI đường chuẩn (kiểu kẻ đường cao từ C) -> chỗ chạm thật sự
+          // là điểm cuối (p2, chân đường vuông góc) -> vẽ tại p2 thay vì p1.
           const refShape = shapes.find((s) => s.id === shape.referenceShapeId);
           let rightAngleEl = null;
           if (shape.showRightAngleMark !== false && refShape && refShape.type === 'segment') {
             const refP1 = pointsMap.get(refShape.pointIds[0]);
             const refP2 = pointsMap.get(refShape.pointIds[1]);
             if (refP1 && refP2) {
-              const { dirU, dirV } = computePerpendicularEndPoint(refP1, refP2, p1, p2);
-              const mark = getRightAngleMark(p1, dirU, dirV, 0.35);
+              const refDx = refP2.x - refP1.x;
+              const refDy = refP2.y - refP1.y;
+              const refLen2 = refDx * refDx + refDy * refDy || 1;
+              const tP1 = ((p1.x - refP1.x) * refDx + (p1.y - refP1.y) * refDy) / refLen2;
+              const projP1x = refP1.x + tP1 * refDx;
+              const projP1y = refP1.y + tP1 * refDy;
+              const distP1ToRefLine = Math.hypot(p1.x - projP1x, p1.y - projP1y);
+              const vertex = distP1ToRefLine > 0.02 ? p2 : p1;
+              const other = vertex === p1 ? p2 : p1;
+              const { dirU, dirV } = computePerpendicularEndPoint(refP1, refP2, vertex, other);
+              const mark = getRightAngleMark(vertex, dirU, dirV, 0.35);
               const sm1 = worldToScreen(mark.p1.x, mark.p1.y, viewport);
               const sm2 = worldToScreen(mark.p2.x, mark.p2.y, viewport);
               const sm3 = worldToScreen(mark.p3.x, mark.p3.y, viewport);
