@@ -1016,6 +1016,25 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [points, shapes, pathAnnotations, rightAngleMarks, bgImage, currentDrawingId]);
 
+  // Cảnh báo của TRÌNH DUYỆT khi người dùng lỡ tay refresh/đóng tab/rời trang mà đang có
+  // nội dung CHƯA LƯU — áp dụng cho MỌI trạng thái đăng nhập (kể cả chưa đăng nhập/chưa được
+  // duyệt, vì nhóm này không có cách nào lưu bài qua menu Lưu/Tải, nên rủi ro mất bài cao nhất).
+  // "Chưa lưu" = có nội dung (điểm/hình) VÀ (chưa từng gắn với 1 file nào (currentDrawingId
+  // null) HOẶC đang gắn với file nhưng tự động lưu còn dở/lỗi (autoSaveStatus !== 'saved'/'idle')).
+  useEffect(() => {
+    const hasContent = points.length > 0 || shapes.length > 0;
+    const isUnsaved = !currentDrawingId || autoSaveStatus === 'saving' || autoSaveStatus === 'error';
+    if (!hasContent || !isUnsaved) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = ''; // Cho phép hiển thị hộp thoại xác nhận mặc định của trình duyệt
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [points.length, shapes.length, currentDrawingId, autoSaveStatus]);
+
   // Keyboard Shortcuts Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
