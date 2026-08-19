@@ -1075,17 +1075,21 @@ export default function App() {
         shapes={shapes}
         pointCounter={pointCounter}
         bgImage={bgImage}
+        pathAnnotations={pathAnnotations}
+        rightAngleMarks={rightAngleMarks}
         formulaMode={formulaMode}
         onToggleFormulaMode={() => setFormulaMode((v) => !v)}
         onOpenVisibilityManager={() => setShowVisibilityManager(true)}
-        onLoadDrawing={(loadedPoints, loadedShapes, loadedPointCounter, loadedBgImage, loadedPathAnnotations) => {
+        onLoadDrawing={(loadedPoints, loadedShapes, loadedPointCounter, loadedBgImage, loadedPathAnnotations, loadedRightAngleMarks) => {
           setPoints(loadedPoints);
           setShapes(loadedShapes);
           setPointCounter(loadedPointCounter);
           setPathAnnotations(loadedPathAnnotations || []);
+          setRightAngleMarks(loadedRightAngleMarks || []);
           setSelectedPointId(null);
           setSelectedShapeId(null);
           setSelectedPathAnnotationId(null);
+          setSelectedRightAngleMarkId(null);
           if (loadedBgImage) {
             setBgImage(loadedBgImage);
           } else {
