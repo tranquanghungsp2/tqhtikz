@@ -4083,32 +4083,36 @@ export const Canvas: React.FC<CanvasProps> = ({
         )}
       </svg>
 
-      {/* Top-Left Zoom Controls — đẩy xuống thêm để không dính sát thanh công cụ ngang (GeometryToolbar) phía trên canvas */}
-      <div className="absolute top-14 left-8 z-20 flex items-center bg-white/95 backdrop-blur-xs border border-[#dbe4ee] rounded-md shadow-xs p-1 space-x-1">
-        <button
-          onClick={handleZoomIn}
-          title="Phóng to (+)"
-          className="p-1.5 rounded hover:bg-[#f1f5f9] text-[#16233a] transition-colors"
-        >
-          <ZoomIn className="w-4 h-4" />
-        </button>
-        <button
-          onClick={handleZoomOut}
-          title="Thu nhỏ (-)"
-          className="p-1.5 rounded hover:bg-[#f1f5f9] text-[#16233a] transition-colors"
-        >
-          <ZoomOut className="w-4 h-4" />
-        </button>
-        <div className="w-[1px] h-4 bg-[#dbe4ee]" />
-        <button
-          onClick={handleResetView}
-          title="Tỉ lệ chuẩn 1:1 & Về gốc (0,0)"
-          className="p-1.5 rounded hover:bg-[#f1f5f9] text-[#16233a] text-xs font-semibold px-2 transition-colors flex items-center gap-1"
-        >
-          <RotateCcw className="w-3 h-3" />
-          <span>{Math.round((viewport.scale / 40) * 100)}%</span>
-        </button>
-      </div>
+      {/* Zoom Controls — ẨN khỏi giao diện (lăn chuột đã zoom đủ dùng, mọi vị trí khác trên
+          canvas đều dễ đụng với flyout thanh ngang hoặc các overlay góc dưới-trái có sẵn).
+          Giữ nguyên code, đổi false -> true nếu sau này muốn hiện lại. */}
+      {false && (
+        <div className="absolute top-14 left-8 z-20 flex items-center bg-white/95 backdrop-blur-xs border border-[#dbe4ee] rounded-md shadow-xs p-1 space-x-1">
+          <button
+            onClick={handleZoomIn}
+            title="Phóng to (+)"
+            className="p-1.5 rounded hover:bg-[#f1f5f9] text-[#16233a] transition-colors"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleZoomOut}
+            title="Thu nhỏ (-)"
+            className="p-1.5 rounded hover:bg-[#f1f5f9] text-[#16233a] transition-colors"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <div className="w-[1px] h-4 bg-[#dbe4ee]" />
+          <button
+            onClick={handleResetView}
+            title="Tỉ lệ chuẩn 1:1 & Về gốc (0,0)"
+            className="p-1.5 rounded hover:bg-[#f1f5f9] text-[#16233a] text-xs font-semibold px-2 transition-colors flex items-center gap-1"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span>{Math.round((viewport.scale / 40) * 100)}%</span>
+          </button>
+        </div>
+      )}
 
       {activeTool === 'eyedropper' && pickedColor && (() => {
         const rgbStr = `{rgb,255:red,${pickedColor.r};green,${pickedColor.g};blue,${pickedColor.b}}`;
