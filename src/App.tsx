@@ -22,6 +22,8 @@ import { FormulaPoint, FormulaVariable, FormulaPathGroup } from './types-formula
 import { FormulaPanel } from './components/FormulaPanel';
 import { FormulaCanvas } from './components/FormulaCanvas';
 import { VisibilityManager } from './components/VisibilityManager';
+import { useAuth } from './hooks/useAuth';
+import { useProfile } from './hooks/useProfile';
 
 // Giao điểm của 2 đường THẲNG (không giới hạn đoạn) — dùng để tính đúng vị trí điểm cuối
 // của 1 đường song song/vuông góc khi nó còn bị ép buộc nằm trên 1 đường khác cùng lúc.
@@ -70,6 +72,26 @@ function resolveLineAnchorDir(
 
 export default function App() {
   const svgRef = useRef<SVGSVGElement | null>(null);
+
+  // Trạng thái đăng nhập/duyệt tài khoản — dùng để hạn chế copy/tải mã TikZ và hiện watermark
+  // khi tài khoản đã đăng nhập nhưng CHƯA được duyệt. Chưa đăng nhập vẫn vẽ tự do, chỉ chặn
+  // copy/tải, không hiện watermark hay thông báo liên hệ (đó là dành riêng cho trường hợp đã
+  // đăng nhập mà chờ duyệt).
+  const { user } = useAuth();
+  const { status: approvalStatus } = useProfile(user);
+  const isApproved = approvalStatus === 'approved';
+  const isCopyRestricted = !user || !isApproved;
+  const showWatermark = !!user && !isApproved;
+
+  const [showApprovalToast, setShowApprovalToast] = useState(false);
+  useEffect(() => {
+    if (user && approvalStatus && approvalStatus !== 'approved') {
+      setShowApprovalToast(true);
+      const t = setTimeout(() => setShowApprovalToast(false), 8000);
+      return () => clearTimeout(t);
+    }
+    setShowApprovalToast(false);
+  }, [user, approvalStatus]);
 
   useEffect(() => {
     console.log('--- STARTING FORMULA ENGINE TEST ---');
@@ -1108,6 +1130,20 @@ export default function App() {
 
   return (
     <div className="w-screen h-screen flex flex-col bg-[#eef2f6] text-[#16233a] overflow-hidden">
+      {/* Thông báo tài khoản chưa được duyệt */}
+      {showApprovalToast && (
+        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[60] bg-[#16233a] text-white text-xs rounded-lg shadow-lg px-4 py-3 max-w-sm text-center leading-relaxed animate-in fade-in slide-in-from-top-2 duration-200">
+          <p className="font-semibold mb-1">Đăng nhập để sử dụng.</p>
+          <p>Liên hệ: Zalo Trần Quang Hùng — 039 683 6800</p>
+          <button
+            onClick={() => setShowApprovalToast(false)}
+            className="absolute top-1 right-1.5 text-white/60 hover:text-white text-sm leading-none"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Top Header */}
       <Header
         points={points}
@@ -1294,6 +1330,7 @@ export default function App() {
               onSelectRightAngleMark={setSelectedRightAngleMarkId}
               onAddRightAngleMark={handleAddRightAngleMark}
               onUpdateRightAngleMark={handleUpdateRightAngleMark}
+              showWatermark={showWatermark}
             />
 
             {/* Column 3: Right Sidebar (~330px) */}
@@ -1324,6 +1361,7 @@ export default function App() {
               onSelectPathAnnotation={setSelectedPathAnnotationId}
               onSelectRightAngleMark={setSelectedRightAngleMarkId}
               tikzOptions={tikzOptions}
+              isCopyRestricted={isCopyRestricted}
               onUpdateTikzOptions={(opts) => setTikzOptions((prev) => ({ ...prev, ...opts }))}
               svgRef={svgRef}
               settings={settings}
