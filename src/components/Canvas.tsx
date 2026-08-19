@@ -615,6 +615,34 @@ export const Canvas: React.FC<CanvasProps> = ({
     };
   };
 
+  // Tìm tất cả điểm nối trực tiếp với 1 điểm qua các loại hình có "cạnh" rõ ràng
+  // (đoạn thẳng, đường gấp khúc, đường song song/vuông góc) — dùng cho việc giữ Shift
+  // khi KÉO 1 điểm đã có sẵn, để khoá đúng góc với điểm hàng xóm đó.
+  const findNeighborPointsOf = (pointId: string): GeoPoint[] => {
+    const neighborIds = new Set<string>();
+    for (const s of shapes) {
+      if (s.type === 'segment') {
+        if (s.pointIds[0] === pointId) neighborIds.add(s.pointIds[1]);
+        if (s.pointIds[1] === pointId) neighborIds.add(s.pointIds[0]);
+      } else if (s.type === 'polyline') {
+        const idx = s.pointIds.indexOf(pointId);
+        if (idx !== -1) {
+          const n = s.pointIds.length;
+          if (idx > 0) neighborIds.add(s.pointIds[idx - 1]);
+          else if (s.isClosed) neighborIds.add(s.pointIds[n - 1]);
+          if (idx < n - 1) neighborIds.add(s.pointIds[idx + 1]);
+          else if (s.isClosed) neighborIds.add(s.pointIds[0]);
+        }
+      } else if (s.type === 'parallel_line' || s.type === 'perpendicular_line') {
+        if (s.throughPointId === pointId) neighborIds.add(s.endPointId);
+        if (s.endPointId === pointId) neighborIds.add(s.throughPointId);
+      }
+    }
+    return Array.from(neighborIds)
+      .map((id) => pointsMap.get(id))
+      .filter(Boolean) as GeoPoint[];
+  };
+
   // Points map for fast lookup
   const pointsMap = new Map<string, GeoPoint>();
   points.forEach((p) => pointsMap.set(p.id, p));
@@ -2054,7 +2082,22 @@ export const Canvas: React.FC<CanvasProps> = ({
           return;
         }
       }
-      onUpdatePointCoord(draggingPointId, wx, wy);
+      let finalWx = wx;
+      let finalWy = wy;
+      // Giữ Shift khi kéo 1 điểm đã có sẵn: nếu điểm đó CHỈ nối với đúng 1 điểm khác (VD: B
+      // của đoạn AB) thì khoá góc theo đúng điểm đó (giống hệt cơ chế lúc vẽ mới) — kéo B thì
+      // AB giữ nguyên góc đã có, chỉ đổi độ dài. Nếu điểm nối với >1 điểm khác (đỉnh chung
+      // của nhiều cạnh, VD đỉnh giữa của đường gấp khúc) thì KHÔNG khoá (mỗi cạnh muốn 1 góc
+      // khác nhau, không thể thoả cả hai cùng lúc bằng 1 điểm) — giữ hành vi kéo tự do như cũ.
+      if (isShiftHeld) {
+        const neighbors = findNeighborPointsOf(draggingPointId);
+        if (neighbors.length === 1) {
+          const snapped = snapToAxisAngle(neighbors[0], { x: wx, y: wy });
+          finalWx = snapped.x;
+          finalWy = snapped.y;
+        }
+      }
+      onUpdatePointCoord(draggingPointId, finalWx, finalWy);
       return;
     }
 
