@@ -337,6 +337,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <span className="font-mono text-xs font-bold leading-none w-4 text-center">⌐</span>
               <span>Ký hiệu góc vuông (3 điểm)</span>
             </button>
+
+            <button
+              id="tool-btn-anchor_point"
+              onClick={() => onSelectTool('anchor_point')}
+              title="Nhấp vào 1 điểm có sẵn để đặt tên điểm neo — dùng để tái sử dụng khi xuất bản vẽ dạng pic (\\tikzset{pics/...})"
+              className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-left ${
+                activeTool === 'anchor_point'
+                  ? 'bg-[#e4ecf7] text-[#2f5d99] font-semibold ring-1 ring-[#2f5d99]/10'
+                  : 'text-[#16233a] hover:bg-[#f1f5f9]'
+              }`}
+            >
+              <span className="font-mono text-xs">⚓</span>
+              <span>Điểm neo (pic anchor)</span>
+            </button>
           </div>
         </div>
 
