@@ -935,6 +935,51 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const EDGE_SHAPE_TYPES = new Set(['rectangle', 'rounded_rectangle', 'square', 'polyline']);
 
+  // Giao điểm của 2 đường THẲNG (không giới hạn đoạn) — dùng để tính đúng vị trí điểm cuối
+  // vuông góc khi nó còn bị ép buộc nằm trên 1 đường khác cùng lúc.
+  const intersectTwoLines = (
+    p1: { x: number; y: number },
+    dir1: { x: number; y: number },
+    p2: { x: number; y: number },
+    dir2: { x: number; y: number }
+  ): { x: number; y: number } | null => {
+    const denom = dir1.x * dir2.y - dir1.y * dir2.x;
+    if (Math.abs(denom) < 1e-9) return null;
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const t = (dx * dir2.y - dy * dir2.x) / denom;
+    return { x: p1.x + t * dir1.x, y: p1.y + t * dir1.y };
+  };
+
+  // Lấy 1 điểm neo + vector hướng của 1 đường/cạnh bất kỳ — dùng chung cho việc tính giao
+  // điểm ở trên (segment, parallel_line, perpendicular_line, hoặc 1 cạnh của HCN/gấp khúc).
+  const resolveLineAnchorDirForShape = (
+    shapeId: string,
+    edgeIndex: number | undefined,
+    pMap: Map<string, GeoPoint>,
+    allShapes: GeoShape[]
+  ): { anchor: { x: number; y: number }; dir: { x: number; y: number } } | null => {
+    const shape = allShapes.find((s) => s.id === shapeId);
+    if (!shape) return null;
+    let a: { x: number; y: number } | undefined;
+    let b: { x: number; y: number } | undefined;
+    if (edgeIndex !== undefined) {
+      const edge = getEdgeByIndex(shape, edgeIndex, pMap);
+      if (edge) {
+        a = edge.p1;
+        b = edge.p2;
+      }
+    } else if (shape.type === 'segment') {
+      a = pMap.get(shape.pointIds[0]);
+      b = pMap.get(shape.pointIds[1]);
+    } else if (shape.type === 'parallel_line' || shape.type === 'perpendicular_line') {
+      a = pMap.get(shape.throughPointId);
+      b = pMap.get(shape.endPointId);
+    }
+    if (!a || !b) return null;
+    return { anchor: a, dir: { x: b.x - a.x, y: b.y - a.y } };
+  };
+
   // Giống findPointOnAnyLine, nhưng trả thêm shapeId và tham số t để tạo điểm RÀNG BUỘC
   // (dùng riêng cho tool "Điểm trên đường", khác với snap một lần của tool song song/vuông góc).
   const findLineForConstrainedPoint = (
@@ -1691,7 +1736,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         // Bước 3: chốt điểm cuối.
         // Mặc định: toạ độ TÍNH theo phép chiếu vuông góc (giữ đúng góc vuông với đường chuẩn).
         const through = tempPoints[0];
-        const { endPoint } = computePerpendicularEndPoint(refPts.p1, refPts.p2, through, { x: wx, y: wy });
+        const { endPoint, dirV } = computePerpendicularEndPoint(refPts.p1, refPts.p2, through, { x: wx, y: wy });
 
         // Nếu bấm gần 1 ĐIỂM có sẵn — dùng luôn điểm đó, không tạo điểm mới (giống mọi tool khác).
         // Nếu không trúng điểm nhưng gần 1 ĐƯỜNG có sẵn khác — tạo điểm RÀNG BUỘC nằm trên
@@ -1705,14 +1750,22 @@ export const Canvas: React.FC<CanvasProps> = ({
         } else {
           const hit = findLineForConstrainedPoint(sx, sy);
           if (hit) {
+            // Điểm cuối phải thoả ĐỒNG THỜI 2 ràng buộc: vuông góc với đường chuẩn VÀ nằm
+            // trên đường mục tiêu vừa bắt được — vị trí đúng là GIAO ĐIỂM giữa tia vuông góc
+            // (qua "through", hướng dirV) và đường mục tiêu đó, không phải toạ độ click thô.
+            const targetInfo = resolveLineAnchorDirForShape(hit.shapeId, hit.edgeIndex, pointsMap, shapes);
+            const inter = targetInfo
+              ? intersectTwoLines(through, dirV, targetInfo.anchor, targetInfo.dir)
+              : null;
+            const finalPos = inter ?? { x: hit.x, y: hit.y };
             endPt = {
               id: `p_${Date.now()}_perp`,
               label: nextPointLabel,
-              x: hit.x,
-              y: hit.y,
+              x: finalPos.x,
+              y: finalPos.y,
               labelPos: 'auto',
               style: { color: '#f59e0b', pointStyle: 'dot' },
-              derivedFrom: { type: 'pointOnLine', shapeId: hit.shapeId, t: hit.t, edgeIndex: hit.edgeIndex },
+              derivedFrom: { type: 'perpEndOnLine', targetShapeId: hit.shapeId, targetEdgeIndex: hit.edgeIndex },
             };
           } else {
             endPt = {
