@@ -14,6 +14,7 @@ import { Toolbar } from './components/Toolbar';
 import { Canvas } from './components/Canvas';
 import { RightSidebar } from './components/RightSidebar';
 import { Header } from './components/Header';
+import { updateDrawing } from './lib/drawings';
 import { generatePointLabel, dist, findShapeIntersections, computeParamArcEndPoint, getEdgeByIndex, findEdgeShapeIntersections, intersectEdgeEdge } from './utils/geometry';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
 import { evaluateAllFormulas } from './utils/formulaEvaluator';
@@ -154,6 +155,13 @@ export default function App() {
   const [points, setPoints] = useState<GeoPoint[]>([]);
   const [shapes, setShapes] = useState<GeoShape[]>([]);
   const [pointCounter, setPointCounter] = useState<number>(0);
+  const [currentDrawingId, setCurrentDrawingId] = useState<string | null>(null);
+  const [currentDrawingName, setCurrentDrawingName] = useState<string | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // true ngay sau khi VỪA MỞ 1 file — để bỏ qua đúng 1 lượt kích hoạt auto-save do chính
+  // hành động load gây ra thay đổi points/shapes (không phải do người dùng tự sửa gì cả).
+  const skipNextAutoSaveRef = useRef(false);
   const [pathAnnotations, setPathAnnotations] = useState<PathAnnotation[]>([]);
   const [rightAngleMarks, setRightAngleMarks] = useState<RightAngleMark[]>([]);
 
@@ -953,6 +961,34 @@ export default function App() {
     setArcRadiusSource(null);
   }, [paramArcStartPointId, points, arcStartAngle, arcEndAngle, arcRadius, arcRadiusSource, handleAddPoint, handleAddShape]);
 
+  // Tự động lưu (ghi đè) vào file đang mở sau 2.5 giây ngừng thao tác — chỉ chạy khi đang có
+  // 1 file thật sự đang mở (currentDrawingId khác null); vẽ mới hoàn toàn / chưa lưu lần nào
+  // thì KHÔNG tự tạo file mới (tránh spam bản vẽ rác).
+  useEffect(() => {
+    if (skipNextAutoSaveRef.current) {
+      skipNextAutoSaveRef.current = false;
+      return;
+    }
+    if (!currentDrawingId) return;
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
+      setAutoSaveStatus('saving');
+      try {
+        await updateDrawing(currentDrawingId, points, shapes, pointCounter, bgImage, pathAnnotations, rightAngleMarks);
+        setAutoSaveStatus('saved');
+      } catch (error) {
+        console.error('Auto-save error:', error);
+        setAutoSaveStatus('error');
+      }
+    }, 2500);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [points, shapes, pathAnnotations, rightAngleMarks, bgImage, currentDrawingId]);
+
   // Keyboard Shortcuts Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1080,15 +1116,27 @@ export default function App() {
         bgImage={bgImage}
         pathAnnotations={pathAnnotations}
         rightAngleMarks={rightAngleMarks}
+        currentDrawingId={currentDrawingId}
+        currentDrawingName={currentDrawingName}
+        autoSaveStatus={autoSaveStatus}
+        onSetCurrentDrawing={(id, name) => {
+          setCurrentDrawingId(id);
+          setCurrentDrawingName(name);
+          setAutoSaveStatus('idle');
+        }}
         formulaMode={formulaMode}
         onToggleFormulaMode={() => setFormulaMode((v) => !v)}
         onOpenVisibilityManager={() => setShowVisibilityManager(true)}
-        onLoadDrawing={(loadedPoints, loadedShapes, loadedPointCounter, loadedBgImage, loadedPathAnnotations, loadedRightAngleMarks) => {
+        onLoadDrawing={(loadedPoints, loadedShapes, loadedPointCounter, loadedBgImage, loadedPathAnnotations, loadedRightAngleMarks, drawingId, drawingName) => {
+          skipNextAutoSaveRef.current = true;
           setPoints(loadedPoints);
           setShapes(loadedShapes);
           setPointCounter(loadedPointCounter);
           setPathAnnotations(loadedPathAnnotations || []);
           setRightAngleMarks(loadedRightAngleMarks || []);
+          setCurrentDrawingId(drawingId);
+          setCurrentDrawingName(drawingName);
+          setAutoSaveStatus('idle');
           setSelectedPointId(null);
           setSelectedShapeId(null);
           setSelectedPathAnnotationId(null);
