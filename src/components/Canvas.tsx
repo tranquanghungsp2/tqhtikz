@@ -1839,6 +1839,46 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     // Handle point dragging
     if (draggingPointId) {
+      const draggedPt = points.find((p) => p.id === draggingPointId);
+      // Điểm ràng buộc "nằm trên đường" (derivedFrom.type === 'pointOnLine') — kéo phải
+      // CHIẾU LẠI vị trí chuột lên đúng đường/cạnh đã gắn, để nó luôn trượt dọc theo đường,
+      // không bay tự do ra ngoài. Áp dụng chung cho MỌI điểm loại này trong toàn app
+      // (tool "Điểm trên đường" lẫn điểm cuối vừa bắt vào đường ở tool Vuông góc/Song song).
+      if (draggedPt?.derivedFrom?.type === 'pointOnLine') {
+        const boundShapeId = draggedPt.derivedFrom.shapeId;
+        const boundEdgeIndex = draggedPt.derivedFrom.edgeIndex;
+        const boundShape = shapes.find((s) => s.id === boundShapeId);
+        let a: { x: number; y: number } | undefined;
+        let b: { x: number; y: number } | undefined;
+        if (boundShape) {
+          if (boundShape.type === 'segment') {
+            a = pointsMap.get(boundShape.pointIds[0]);
+            b = pointsMap.get(boundShape.pointIds[1]);
+          } else if (boundShape.type === 'parallel_line' || boundShape.type === 'perpendicular_line') {
+            a = pointsMap.get(boundShape.throughPointId);
+            b = pointsMap.get(boundShape.endPointId);
+          } else if (EDGE_SHAPE_TYPES.has(boundShape.type) && boundEdgeIndex !== undefined) {
+            const edge = getEdgeByIndex(boundShape, boundEdgeIndex, pointsMap);
+            if (edge) {
+              a = edge.p1;
+              b = edge.p2;
+            }
+          }
+        }
+        if (a && b) {
+          const proj = closestPointOnSegment({ x: wx, y: wy }, a, b);
+          const abx = b.x - a.x;
+          const aby = b.y - a.y;
+          const len2 = abx * abx + aby * aby || 1;
+          const t = ((proj.x - a.x) * abx + (proj.y - a.y) * aby) / len2;
+          onUpdatePoint(draggingPointId, {
+            x: proj.x,
+            y: proj.y,
+            derivedFrom: { type: 'pointOnLine', shapeId: boundShapeId, t, edgeIndex: boundEdgeIndex },
+          });
+          return;
+        }
+      }
       onUpdatePointCoord(draggingPointId, wx, wy);
       return;
     }
