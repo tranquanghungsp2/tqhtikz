@@ -1688,18 +1688,33 @@ export const Canvas: React.FC<CanvasProps> = ({
         const pt = getOrCreatePointOnLine(sx, sy, wx, wy);
         setTempPoints([pt]);
       } else {
-        // Bước 3: chốt điểm cuối (đã chiếu vuông góc)
+        // Bước 3: chốt điểm cuối.
+        // Mặc định: toạ độ TÍNH theo phép chiếu vuông góc (giữ đúng góc vuông với đường chuẩn).
         const through = tempPoints[0];
         const { endPoint } = computePerpendicularEndPoint(refPts.p1, refPts.p2, through, { x: wx, y: wy });
-        const endPt: GeoPoint = {
-          id: `p_${Date.now()}_perp`,
-          label: nextPointLabel,
-          x: endPoint.x,
-          y: endPoint.y,
-          labelPos: 'auto',
-          style: { color: '#16233a', pointStyle: 'dot' },
-        };
-        onAddPoint(endPt);
+
+        // Nếu bấm gần 1 ĐIỂM có sẵn — dùng luôn điểm đó, không tạo điểm mới (giống mọi tool khác).
+        // Nếu không trúng điểm nhưng gần 1 ĐƯỜNG có sẵn khác — bắt toạ độ theo đúng đường đó,
+        // giống hệt cách "điểm đi qua" đang bắt ở Bước 2. Không trúng gì cả thì dùng toạ độ
+        // đã tính theo phép chiếu vuông góc như trước.
+        const nearestExisting = findNearestPoint(sx, sy, points, viewport, 12);
+        let endPt: GeoPoint;
+        if (nearestExisting) {
+          endPt = nearestExisting;
+        } else {
+          const onLine = findPointOnAnyLine(sx, sy);
+          const finalCoord = onLine ?? endPoint;
+          endPt = {
+            id: `p_${Date.now()}_perp`,
+            label: nextPointLabel,
+            x: finalCoord.x,
+            y: finalCoord.y,
+            labelPos: 'auto',
+            style: { color: '#16233a', pointStyle: 'dot' },
+          };
+          onAddPoint(endPt);
+        }
+
         const newShape: GeoShape = {
           id: `s_perp_${Date.now()}`,
           type: 'perpendicular_line',
@@ -3277,8 +3292,13 @@ export const Canvas: React.FC<CanvasProps> = ({
       if (refPts) {
         const through = tempPoints[0];
         const { endPoint, dirU, dirV } = computePerpendicularEndPoint(refPts.p1, refPts.p2, through, mouseW);
+        // Cho preview hiện đúng vị trí sẽ chốt thật (ưu tiên điểm/đường có sẵn gần chuột),
+        // để không bị lệch so với kết quả sau khi click.
+        const nearestExistingPreview = findNearestPoint(mouseS.x, mouseS.y, points, viewport, 12);
+        const onLinePreview = nearestExistingPreview ? null : findPointOnAnyLine(mouseS.x, mouseS.y);
+        const previewEndWorld = nearestExistingPreview ?? onLinePreview ?? endPoint;
         const sThrough = worldToScreen(through.x, through.y, viewport);
-        const sEnd = worldToScreen(endPoint.x, endPoint.y, viewport);
+        const sEnd = worldToScreen(previewEndWorld.x, previewEndWorld.y, viewport);
         const mark = getRightAngleMark(through, dirU, dirV, 0.35);
         const sm1 = worldToScreen(mark.p1.x, mark.p1.y, viewport);
         const sm2 = worldToScreen(mark.p2.x, mark.p2.y, viewport);
