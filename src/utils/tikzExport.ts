@@ -724,59 +724,41 @@ export function generateTikZCodeWithLineMap(
       }
     }
 
-    // Xuất nhóm các điểm có nhãn dùng \foreach
-    if (visibleLabeledPoints.length > 0) {
-      if (options.includePoints && options.includeLabels && options.useNamedCoordinates !== false) {
-        const groupedByDistance = new Map<number, GeoPoint[]>();
-        visibleLabeledPoints.forEach((pt) => {
-          const dist = Math.round((pt.labelDistance ?? 8) * 10) / 10;
-          const arr = groupedByDistance.get(dist) || [];
-          arr.push(pt);
-          groupedByDistance.set(dist, arr);
-        });
+    // Xuất nhãn/điểm LUÔN dùng \foreach gộp nhóm theo khoảng cách nhãn — dù bạn bật cả
+    // "Hiện điểm" lẫn "Hiện nhãn", hay chỉ bật 1 trong 2 — không còn nhánh "lẻ tẻ" riêng
+    // (nhánh đó từng bị lỗi cú pháp thiếu dấu $, và định dạng không đồng nhất với nhánh gộp).
+    if (visibleLabeledPoints.length > 0 && (options.includePoints || options.includeLabels)) {
+      const groupedByDistance = new Map<number, GeoPoint[]>();
+      visibleLabeledPoints.forEach((pt) => {
+        const d = Math.round((pt.labelDistance ?? 8) * 10) / 10;
+        const arr = groupedByDistance.get(d) || [];
+        arr.push(pt);
+        groupedByDistance.set(d, arr);
+      });
 
-        if (groupedByDistance.size > 0) {
-          lines.push('');
-          lines.push('  % --- Nhãn và điểm (nhóm theo khoảng cách nhãn) ---');
-          Array.from(groupedByDistance.entries())
-            .sort((a, b) => a[0] - b[0])
-            .forEach(([distancePt, ptsInGroup]) => {
-              const pairs = ptsInGroup
-                .map((pt) => {
-                  const angle = Math.round((pt.labelAngleDeg ?? 45) * 10) / 10;
-                  return `${getTikZCoordName(pt)}/${formatNumber(angle)}`;
-                })
-                .join(',');
-              lines.push(`  \\foreach \\x/\\y in{`);
-              lines.push(`    ${pairs}`);
-              lines.push(`  }{`);
-              lines.push(`    \\draw[fill=black] (\\x) circle(1pt) ++ (\\y:${formatNumber(distancePt)}pt) node{$\\x$};`);
-              lines.push(`  }`);
-            });
-        }
-      } else {
-        // Fallback lẻ tẻ nếu chỉ bật nhãn hoặc chỉ bật điểm, hoặc useNamedCoordinates === false
-        lines.push('');
-        lines.push('  % --- Nhãn hoặc điểm riêng lẻ ---');
-        for (const pt of visibleLabeledPoints) {
-          const ptCoordStr = options.useNamedCoordinates === false ? rawCoord(pt) : `(${getTikZCoordName(pt)})`;
-          if (options.includePoints && pt.style?.pointStyle !== 'hidden') {
-            if (pt.style?.pointStyle === 'circle') {
-              lines.push(`  \\draw[fill=white] ${ptCoordStr} circle (1.5pt);`);
-            } else if (pt.style?.pointStyle === 'cross') {
-              lines.push(`  \\draw ${ptCoordStr} +(-2pt,-2pt) -- +(2pt,2pt) +(-2pt,2pt) -- +(2pt,-2pt);`);
-            } else {
-              lines.push(`  \\fill ${ptCoordStr} circle (1.5pt);`);
-            }
+      lines.push('');
+      lines.push('  % --- Nhãn và điểm (nhóm theo khoảng cách nhãn) ---');
+      Array.from(groupedByDistance.entries())
+        .sort((a, b) => a[0] - b[0])
+        .forEach(([distancePt, ptsInGroup]) => {
+          const pairs = ptsInGroup
+            .map((pt) => {
+              const angle = Math.round((pt.labelAngleDeg ?? 45) * 10) / 10;
+              return `${getTikZCoordName(pt)}/${formatNumber(angle)}`;
+            })
+            .join(',');
+          lines.push(`  \\foreach \\x/\\y in{`);
+          lines.push(`    ${pairs}`);
+          lines.push(`  }{`);
+          if (options.includePoints && options.includeLabels) {
+            lines.push(`    \\draw[fill=black] (\\x) circle(1pt) ++ (\\y:${formatNumber(distancePt)}pt) node{$\\x$};`);
+          } else if (options.includePoints) {
+            lines.push(`    \\draw[fill=black] (\\x) circle(1pt);`);
+          } else {
+            lines.push(`    \\node at ($(\\x) + (\\y:${formatNumber(distancePt)}pt)$) {$\\x$};`);
           }
-          if (options.includeLabels) {
-            const { angle, distance } = pt.labelAngleDeg !== undefined && pt.labelDistance !== undefined
-              ? { angle: pt.labelAngleDeg, distance: pt.labelDistance }
-              : { angle: 45, distance: 8 };
-            lines.push(`  \\node at (${ptCoordStr} + (${formatNumber(angle)}:${formatNumber(distance)}pt)$) {${getMathLabel(pt.label)}};`);
-          }
-        }
-      }
+          lines.push(`  }`);
+        });
     }
   }
 
